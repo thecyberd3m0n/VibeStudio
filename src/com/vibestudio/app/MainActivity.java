@@ -348,16 +348,13 @@ public class MainActivity extends Activity {
     }
 
     private void executeCommandInBash(String cmd, final EditText consoleOutput, final ScrollView outputScroll, final Button btnSend) {
-        String shellPath = mDbHelper.getSetting("env_shell");
         String envHome = mDbHelper.getSetting("env_home");
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
-        if (TextUtils.isEmpty(shellPath) || !new File(shellPath).exists()) {
-            shellPath = "/system/bin/sh";
-        }
-
         try {
-            ProcessBuilder pb = new ProcessBuilder(shellPath, "-c", cmd);
+            // Android SELinux prevents direct execve on files in /data/data private dir.
+            // Executing through /system/bin/sh handles commands and custom scripts smoothly.
+            ProcessBuilder pb = new ProcessBuilder("/system/bin/sh", "-c", cmd);
 
             Map<String, String> env = pb.environment();
             if (!TextUtils.isEmpty(envHome)) env.put("HOME", envHome);
