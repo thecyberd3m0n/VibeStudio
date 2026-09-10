@@ -6,6 +6,8 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.widget.DrawerLayout;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -21,6 +23,11 @@ import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.util.Map;
 
 public class MainActivity extends Activity {
 
@@ -52,6 +59,7 @@ public class MainActivity extends Activity {
     private TextView mToolbarTitle;
 
     private DatabaseHelper mDbHelper;
+    private Handler mHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +67,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         mDbHelper = new DatabaseHelper(this);
+        mHandler = new Handler(Looper.getMainLooper());
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerContainer = findViewById(R.id.left_drawer_container);
@@ -277,23 +286,25 @@ public class MainActivity extends Activity {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
 
+        final ScrollView outputScroll = new ScrollView(this);
         final TextView consoleOutput = new TextView(this);
-        consoleOutput.setText("vibestudio@termux:~$ uname -a\nLinux termux-android 5.10.0-vibe aarch64\nvibestudio@termux:~$ ");
+        consoleOutput.setText("vibestudio@android:~$ ");
         consoleOutput.setTextColor(Color.parseColor("#00FF66"));
         consoleOutput.setBackgroundColor(Color.parseColor("#0D0D11"));
         consoleOutput.setTypeface(Typeface.MONOSPACE);
         consoleOutput.setPadding(20, 20, 20, 20);
 
+        outputScroll.addView(consoleOutput);
         LinearLayout.LayoutParams outParams = new LinearLayout.LayoutParams(
                 MATCH_PARENT, 0, 1.0f);
-        consoleOutput.setLayoutParams(outParams);
+        outputScroll.setLayoutParams(outParams);
 
         LinearLayout inputRow = new LinearLayout(this);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
         inputRow.setPadding(0, 12, 0, 0);
 
         final EditText cmdInput = new EditText(this);
-        cmdInput.setHint("Type command...");
+        cmdInput.setHint("Type command (e.g. pwd, ls, echo hello)...");
         cmdInput.setHintTextColor(Color.parseColor("#666666"));
         cmdInput.setTextColor(Color.parseColor("#FFFFFF"));
         cmdInput.setBackgroundColor(Color.parseColor("#1E1E24"));
@@ -303,7 +314,7 @@ public class MainActivity extends Activity {
                 0, WRAP_CONTENT, 1.0f);
         cmdInput.setLayoutParams(inParams);
 
-        Button btnSend = new Button(this);
+        final Button btnSend = new Button(this);
         btnSend.setText("RUN");
         btnSend.setTextColor(Color.parseColor("#121212"));
         btnSend.setBackgroundColor(Color.parseColor("#BB86FC"));
@@ -311,20 +322,91 @@ public class MainActivity extends Activity {
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String cmd = cmdInput.getText().toString();
-                if (cmd.length() > 0) {
-                    consoleOutput.append(cmd + "\n[Exec]: " + cmd + " executed successfully.\nvibestudio@termux:~$ ");
-                    cmdInput.setText("");
-                }
+                final String cmd = cmdInput.getText().toString().trim();
+                if (cmd.length() == 0) return;
+
+                consoleOutput.append(cmd + "\n");
+                cmdInput.setText("");
+                btnSend.setEnabled(false);
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        executeCommandInBash(cmd, consoleOutput, outputScroll, btnSend);
+                    }
+                }).start();
             }
         });
 
         inputRow.addView(cmdInput);
         inputRow.addView(btnSend);
 
-        layout.addView(consoleOutput);
+        layout.addView(outputScroll);
         layout.addView(inputRow);
         return layout;
+    }
+
+    private void executeCommandInBash(String cmd, final TextView consoleOutput, final ScrollView outputScroll, final Button btnSend) {
+        String shellPath = mDbHelper.getSetting("env_shell");
+        String envHome = mDbHelper.getSetting("env_home");
+        String envPrefix = mDbHelper.getSetting("env_prefix");
+
+        if (TextUtils.isEmpty(shellPath) || !new File(shellPath).exists()) {
+            shellPath = "/system/bin/sh";
+        }
+
+        try {
+            ProcessBuilder pb = new ProcessBuilder(shellPath, "-c", cmd);
+
+            Map<String, String> env = pb.environment();
+            if (!TextUtils.isEmpty(envHome)) env.put("HOME", envHome);
+            if (!TextUtils.isEmpty(envPrefix)) env.put("PREFIX", envPrefix);
+            env.put("PATH", (envPrefix != null ? envPrefix + "/bin:" : "") + "/system/bin:/system/xbin");
+
+            if (!TextUtils.isEmpty(envHome) && new File(envHome).exists()) {
+                pb.directory(new File(envHome));
+            }
+
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            final StringBuilder output = new StringBuilder();
+
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+
+            process.waitFor();
+            reader.close();
+
+            final String resultText = output.toString();
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    consoleOutput.append(resultText);
+                    consoleOutput.append("vibestudio@android:~$ ");
+                    btnSend.setEnabled(true);
+                    outputScroll.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            outputScroll.fullScroll(ScrollView.FOCUS_DOWN);
+                        }
+                    });
+                }
+            });
+
+        } catch (final Exception e) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    consoleOutput.append("[Error]: " + e.getMessage() + "\nvibestudio@android:~$ ");
+                    btnSend.setEnabled(true);
+                }
+            });
+        }
     }
 
     private View buildChatView() {
