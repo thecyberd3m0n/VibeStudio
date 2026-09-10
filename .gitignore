@@ -1,0 +1,25 @@
+# Build and binary artifacts
+bin/
+obj/
+*.apk
+*.dex
+*.idsig
+
+# Keytool / Keystores
+*.keystore
+*.jks
+
+# IDE / System files
+.navigation/
+captures/
+.externalNativeBuild
+.cxx/
+.idea/
+.gradle/
+build/
+local.properties
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
