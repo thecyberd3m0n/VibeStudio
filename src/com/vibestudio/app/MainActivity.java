@@ -299,7 +299,7 @@ public class MainActivity extends Activity {
         consoleOutput.setTypeface(Typeface.MONOSPACE);
         consoleOutput.setPadding(20, 20, 20, 20);
 
-        // Standard TextView text selection for Android
+        // Standard Android TextView text selection
         consoleOutput.setFocusable(true);
         consoleOutput.setFocusableInTouchMode(true);
         consoleOutput.setClickable(true);
