@@ -2,6 +2,7 @@ package com.vibestudio.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -14,6 +15,7 @@ import android.text.InputType;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -320,6 +322,7 @@ public class MainActivity extends Activity {
         btnSend.setText("RUN");
         btnSend.setTextColor(Color.parseColor("#121212"));
         btnSend.setBackgroundColor(Color.parseColor("#BB86FC"));
+        btnSend.setFocusable(false);
 
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -329,6 +332,7 @@ public class MainActivity extends Activity {
 
                 consoleOutput.append(cmd + "\n");
                 cmdInput.setText("");
+                cmdInput.requestFocus();
                 btnSend.setEnabled(false);
 
                 new Thread(new Runnable() {
@@ -346,6 +350,14 @@ public class MainActivity extends Activity {
         layout.addView(outputScroll);
         layout.addView(inputRow);
         return layout;
+    }
+
+    private void restoreInputFocus(final EditText cmdInput) {
+        cmdInput.requestFocus();
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.showSoftInput(cmdInput, InputMethodManager.SHOW_IMPLICIT);
+        }
     }
 
     private void executeCommandInBash(String cmd, final EditText consoleOutput, final ScrollView outputScroll, final Button btnSend, final EditText cmdInput) {
@@ -386,7 +398,7 @@ public class MainActivity extends Activity {
                     consoleOutput.append(resultText);
                     consoleOutput.append("vibestudio@android:~$ ");
                     btnSend.setEnabled(true);
-                    cmdInput.requestFocus();
+                    restoreInputFocus(cmdInput);
                     outputScroll.post(new Runnable() {
                         @Override
                         public void run() {
@@ -402,7 +414,7 @@ public class MainActivity extends Activity {
                 public void run() {
                     consoleOutput.append("[Error]: " + e.getMessage() + "\nvibestudio@android:~$ ");
                     btnSend.setEnabled(true);
-                    cmdInput.requestFocus();
+                    restoreInputFocus(cmdInput);
                 }
             });
         }
