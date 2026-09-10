@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -287,7 +288,7 @@ public class MainActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
 
         final ScrollView outputScroll = new ScrollView(this);
-        final TextView consoleOutput = new TextView(this);
+        final EditText consoleOutput = new EditText(this);
         consoleOutput.setText("vibestudio@android:~$ ");
         consoleOutput.setTextColor(Color.parseColor("#00FF66"));
         consoleOutput.setBackgroundColor(Color.parseColor("#0D0D11"));
@@ -346,7 +347,7 @@ public class MainActivity extends Activity {
         return layout;
     }
 
-    private void executeCommandInBash(String cmd, final TextView consoleOutput, final ScrollView outputScroll, final Button btnSend) {
+    private void executeCommandInBash(String cmd, final EditText consoleOutput, final ScrollView outputScroll, final Button btnSend) {
         String shellPath = mDbHelper.getSetting("env_shell");
         String envHome = mDbHelper.getSetting("env_home");
         String envPrefix = mDbHelper.getSetting("env_prefix");
@@ -496,11 +497,12 @@ public class MainActivity extends Activity {
         tvSender.setTextSize(12);
         tvSender.setTypeface(null, Typeface.BOLD);
 
-        TextView tvText = new TextView(this);
+        EditText tvText = new EditText(this);
         tvText.setText(text);
         tvText.setTextColor(Color.parseColor("#FFFFFF"));
         tvText.setTextSize(14);
         tvText.setPadding(0, 4, 0, 0);
+        tvText.setBackgroundColor(Color.TRANSPARENT);
 
         card.addView(tvSender);
         card.addView(tvText);
