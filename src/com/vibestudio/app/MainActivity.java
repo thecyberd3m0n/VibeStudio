@@ -332,7 +332,7 @@ public class MainActivity extends Activity {
 
                 consoleOutput.append(cmd + "\n");
                 cmdInput.setText("");
-                cmdInput.requestFocus();
+                restoreInputFocus(cmdInput);
                 btnSend.setEnabled(false);
 
                 new Thread(new Runnable() {
