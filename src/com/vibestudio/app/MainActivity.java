@@ -13,8 +13,10 @@ import android.os.Looper;
 import android.support.v4.widget.DrawerLayout;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -313,6 +315,8 @@ public class MainActivity extends Activity {
         cmdInput.setTextColor(Color.parseColor("#FFFFFF"));
         cmdInput.setBackgroundColor(Color.parseColor("#1E1E24"));
         cmdInput.setPadding(16, 16, 16, 16);
+        cmdInput.setSingleLine(true);
+        cmdInput.setImeOptions(EditorInfo.IME_ACTION_GO);
 
         LinearLayout.LayoutParams inParams = new LinearLayout.LayoutParams(
                 0, WRAP_CONTENT, 1.0f);
@@ -324,9 +328,9 @@ public class MainActivity extends Activity {
         btnSend.setBackgroundColor(Color.parseColor("#BB86FC"));
         btnSend.setFocusable(false);
 
-        btnSend.setOnClickListener(new View.OnClickListener() {
+        final Runnable triggerRun = new Runnable() {
             @Override
-            public void onClick(View v) {
+            public void run() {
                 final String cmd = cmdInput.getText().toString().trim();
                 if (cmd.length() == 0) return;
 
@@ -341,6 +345,27 @@ public class MainActivity extends Activity {
                         executeCommandInBash(cmd, consoleOutput, outputScroll, btnSend, cmdInput);
                     }
                 }).start();
+            }
+        };
+
+        btnSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                triggerRun.run();
+            }
+        });
+
+        cmdInput.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_GO ||
+                    actionId == EditorInfo.IME_ACTION_SEND ||
+                    actionId == EditorInfo.IME_ACTION_DONE ||
+                    (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                    triggerRun.run();
+                    return true;
+                }
+                return false;
             }
         });
 
