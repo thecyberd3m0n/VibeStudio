@@ -294,7 +294,7 @@ public class MainActivity extends Activity {
         consoleOutput.setBackgroundColor(Color.parseColor("#0D0D11"));
         consoleOutput.setTypeface(Typeface.MONOSPACE);
         consoleOutput.setPadding(20, 20, 20, 20);
-        consoleOutput.setKeyListener(null); // Read-only: prevents keyboard input while allowing text selection & copy
+        consoleOutput.setKeyListener(null); // Read-only: selection allowed, keyboard editing disabled
 
         outputScroll.addView(consoleOutput);
         LinearLayout.LayoutParams outParams = new LinearLayout.LayoutParams(
@@ -334,7 +334,7 @@ public class MainActivity extends Activity {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        executeCommandInBash(cmd, consoleOutput, outputScroll, btnSend);
+                        executeCommandInBash(cmd, consoleOutput, outputScroll, btnSend, cmdInput);
                     }
                 }).start();
             }
@@ -348,7 +348,7 @@ public class MainActivity extends Activity {
         return layout;
     }
 
-    private void executeCommandInBash(String cmd, final EditText consoleOutput, final ScrollView outputScroll, final Button btnSend) {
+    private void executeCommandInBash(String cmd, final EditText consoleOutput, final ScrollView outputScroll, final Button btnSend, final EditText cmdInput) {
         String envHome = mDbHelper.getSetting("env_home");
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
@@ -386,6 +386,7 @@ public class MainActivity extends Activity {
                     consoleOutput.append(resultText);
                     consoleOutput.append("vibestudio@android:~$ ");
                     btnSend.setEnabled(true);
+                    cmdInput.requestFocus();
                     outputScroll.post(new Runnable() {
                         @Override
                         public void run() {
@@ -401,6 +402,7 @@ public class MainActivity extends Activity {
                 public void run() {
                     consoleOutput.append("[Error]: " + e.getMessage() + "\nvibestudio@android:~$ ");
                     btnSend.setEnabled(true);
+                    cmdInput.requestFocus();
                 }
             });
         }
@@ -499,7 +501,7 @@ public class MainActivity extends Activity {
         tvText.setTextSize(14);
         tvText.setPadding(0, 4, 0, 0);
         tvText.setBackgroundColor(Color.TRANSPARENT);
-        tvText.setKeyListener(null); // Read-only: selection allowed, keyboard disabled
+        tvText.setKeyListener(null); // Read-only: selection allowed, keyboard editing disabled
 
         card.addView(tvSender);
         card.addView(tvText);
