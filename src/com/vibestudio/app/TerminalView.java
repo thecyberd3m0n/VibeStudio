@@ -17,10 +17,8 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ScrollView;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Map;
 
@@ -115,6 +113,10 @@ public class TerminalView {
                 try {
                     if (mProcessInput != null) {
                         mProcessInput.write(text.getBytes("UTF-8"));
+                        if ("\n".equals(text)) {
+                            // Ensure newline is flushed and processed as command execution line
+                            mProcessInput.write("\n".getBytes("UTF-8"));
+                        }
                         mProcessInput.flush();
                     }
                 } catch (Exception ignored) {}
@@ -127,7 +129,6 @@ public class TerminalView {
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
         try {
-            // Executing standard shell without -i interactive tty warning
             ProcessBuilder pb = new ProcessBuilder("/system/bin/sh");
 
             Map<String, String> env = pb.environment();
