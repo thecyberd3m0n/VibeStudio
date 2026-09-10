@@ -1,25 +1,29 @@
 package com.vibestudio.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.support.v4.widget.DrawerLayout;
+import android.text.InputType;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Button;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.support.v4.widget.DrawerLayout;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
-    // -1 represents MATCH_PARENT / FILL_PARENT in early Android API
     private static final int MATCH_PARENT = -1;
     private static final int WRAP_CONTENT = -2;
 
@@ -47,10 +51,14 @@ public class MainActivity extends Activity {
     private FrameLayout mContentFrame;
     private TextView mToolbarTitle;
 
+    private DatabaseHelper mDbHelper;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mDbHelper = new DatabaseHelper(this);
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerContainer = findViewById(R.id.left_drawer_container);
@@ -129,7 +137,6 @@ public class MainActivity extends Activity {
         mDrawerLayout.closeDrawer(mDrawerContainer);
     }
 
-    // Helper to build Material-styled Dark Card
     private LinearLayout createCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -144,44 +151,90 @@ public class MainActivity extends Activity {
 
     private View buildModelsView() {
         ScrollView scrollView = new ScrollView(this);
-        LinearLayout container = new LinearLayout(this);
+        final LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
 
-        String[][] models = {
-            {"Claude 3.5 Sonnet", "Anthropic • State-of-the-art coding and reasoning", "Active"},
-            {"GPT-4o", "OpenAI • Multimodal high-speed model", "Ready"},
-            {"DeepSeek R1", "DeepSeek • Advanced reasoning and open-weights", "Ready"},
-            {"Llama 3.3 70B", "Meta • Open-source performant model", "Local"}
-        };
+        final String provider = "Gemini";
+        final String savedKey = mDbHelper.getApiKey(provider);
 
-        for (String[] m : models) {
-            LinearLayout card = createCard();
+        LinearLayout card = createCard();
 
-            TextView name = new TextView(this);
-            name.setText(m[0]);
-            name.setTextColor(Color.parseColor("#BB86FC"));
-            name.setTextSize(18);
-            name.setTypeface(null, Typeface.BOLD);
+        TextView name = new TextView(this);
+        name.setText("Google Gemini 1.5 Pro");
+        name.setTextColor(Color.parseColor("#BB86FC"));
+        name.setTextSize(18);
+        name.setTypeface(null, Typeface.BOLD);
 
-            TextView desc = new TextView(this);
-            desc.setText(m[1]);
-            desc.setTextColor(Color.parseColor("#B0B0B0"));
-            desc.setTextSize(14);
-            desc.setPadding(0, 8, 0, 8);
+        TextView desc = new TextView(this);
+        desc.setText("Google • High performance multimodal reasoning and long-context AI");
+        desc.setTextColor(Color.parseColor("#B0B0B0"));
+        desc.setTextSize(14);
+        desc.setPadding(0, 8, 0, 8);
 
-            TextView status = new TextView(this);
-            status.setText("Status: " + m[2]);
+        final TextView status = new TextView(this);
+        if (!TextUtils.isEmpty(savedKey)) {
+            status.setText("Status: Configured (API Key set) • Click to edit");
             status.setTextColor(Color.parseColor("#03DAC6"));
-            status.setTextSize(12);
-
-            card.addView(name);
-            card.addView(desc);
-            card.addView(status);
-            container.addView(card);
+        } else {
+            status.setText("Status: Not configured (Click to set Gemini API Key)");
+            status.setTextColor(Color.parseColor("#FFB74D"));
         }
+        status.setTextSize(12);
 
+        card.addView(name);
+        card.addView(desc);
+        card.addView(status);
+
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showApiKeyDialog(provider, status);
+            }
+        });
+
+        container.addView(card);
         scrollView.addView(container);
         return scrollView;
+    }
+
+    private void showApiKeyDialog(final String provider, final TextView statusTextView) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Configure " + provider + " API Key");
+
+        final EditText input = new EditText(this);
+        input.setHint("Enter " + provider + " API Key");
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        String currentKey = mDbHelper.getApiKey(provider);
+        if (!TextUtils.isEmpty(currentKey)) {
+            input.setText(currentKey);
+        }
+
+        builder.setView(input);
+
+        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String key = input.getText().toString().trim();
+                if (!TextUtils.isEmpty(key)) {
+                    mDbHelper.saveApiKey(provider, key);
+                    statusTextView.setText("Status: Configured (API Key set) • Click to edit");
+                    statusTextView.setTextColor(Color.parseColor("#03DAC6"));
+                    Toast.makeText(MainActivity.this, provider + " API Key saved to database!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "API Key cannot be empty", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
     }
 
     private View buildMCPView() {
@@ -287,7 +340,6 @@ public class MainActivity extends Activity {
                 MATCH_PARENT, 0, 1.0f);
         chatScroll.setLayoutParams(scrollParams);
 
-        // Add sample messages
         addChatMessage(chatContainer, "Assistant", "Hello! Welcome to VibeStudio. How can I assist with your project today?", false);
         addChatMessage(chatContainer, "User", "Can you build a Material Dark Android app?", true);
         addChatMessage(chatContainer, "Assistant", "Absolutely! VibeStudio is configured with a Material Dark theme and drawer navigation.", false);
