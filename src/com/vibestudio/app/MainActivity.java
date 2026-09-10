@@ -1,31 +1,17 @@
 package com.vibestudio.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
-import android.text.InputType;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class MainActivity extends Activity {
-
-    private static final int MATCH_PARENT = -1;
-    private static final int WRAP_CONTENT = -2;
 
     private static class MenuItem {
         String title;
@@ -52,7 +38,11 @@ public class MainActivity extends Activity {
     private TextView mToolbarTitle;
 
     private DatabaseHelper mDbHelper;
+    private ModelsView mModelsView;
+    private McpView mMcpView;
     private TerminalView mTerminalView;
+    private ChatView mChatView;
+    private PermissionsView mPermissionsView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,7 +50,11 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         mDbHelper = new DatabaseHelper(this);
+        mModelsView = new ModelsView(this, mDbHelper);
+        mMcpView = new McpView(this);
         mTerminalView = new TerminalView(this, mDbHelper);
+        mChatView = new ChatView(this);
+        mPermissionsView = new PermissionsView(this);
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerContainer = findViewById(R.id.left_drawer_container);
@@ -120,298 +114,22 @@ public class MainActivity extends Activity {
 
         switch (position) {
             case 0:
-                mContentFrame.addView(buildModelsView());
+                mContentFrame.addView(mModelsView.buildView());
                 break;
             case 1:
-                mContentFrame.addView(buildMCPView());
+                mContentFrame.addView(mMcpView.buildView());
                 break;
             case 2:
                 mContentFrame.addView(mTerminalView.buildView());
                 break;
             case 3:
-                mContentFrame.addView(buildChatView());
+                mContentFrame.addView(mChatView.buildView());
                 break;
             case 4:
-                mContentFrame.addView(buildPermissionsView());
+                mContentFrame.addView(mPermissionsView.buildView());
                 break;
         }
 
         mDrawerLayout.closeDrawer(mDrawerContainer);
-    }
-
-    private LinearLayout createCard() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#1E1E24"));
-        card.setPadding(24, 24, 24, 24);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                MATCH_PARENT, WRAP_CONTENT);
-        params.setMargins(0, 0, 0, 20);
-        card.setLayoutParams(params);
-        return card;
-    }
-
-    private View buildModelsView() {
-        ScrollView scrollView = new ScrollView(this);
-        final LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-
-        final String provider = "Gemini";
-        final String savedKey = mDbHelper.getApiKey(provider);
-
-        LinearLayout card = createCard();
-
-        TextView name = new TextView(this);
-        name.setText("Google Gemini 1.5 Pro");
-        name.setTextColor(Color.parseColor("#BB86FC"));
-        name.setTextSize(18);
-        name.setTypeface(null, Typeface.BOLD);
-
-        TextView desc = new TextView(this);
-        desc.setText("Google • High performance multimodal reasoning and long-context AI");
-        desc.setTextColor(Color.parseColor("#B0B0B0"));
-        desc.setTextSize(14);
-        desc.setPadding(0, 8, 0, 8);
-
-        final TextView status = new TextView(this);
-        if (!TextUtils.isEmpty(savedKey)) {
-            status.setText("Status: Configured (API Key set) • Click to edit");
-            status.setTextColor(Color.parseColor("#03DAC6"));
-        } else {
-            status.setText("Status: Not configured (Click to set Gemini API Key)");
-            status.setTextColor(Color.parseColor("#FFB74D"));
-        }
-        status.setTextSize(12);
-
-        card.addView(name);
-        card.addView(desc);
-        card.addView(status);
-
-        card.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showApiKeyDialog(provider, status);
-            }
-        });
-
-        container.addView(card);
-        scrollView.addView(container);
-        return scrollView;
-    }
-
-    private void showApiKeyDialog(final String provider, final TextView statusTextView) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Configure " + provider + " API Key");
-
-        final EditText input = new EditText(this);
-        input.setHint("Enter " + provider + " API Key");
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-
-        String currentKey = mDbHelper.getApiKey(provider);
-        if (!TextUtils.isEmpty(currentKey)) {
-            input.setText(currentKey);
-        }
-
-        builder.setView(input);
-
-        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String key = input.getText().toString().trim();
-                if (!TextUtils.isEmpty(key)) {
-                    mDbHelper.saveApiKey(provider, key);
-                    statusTextView.setText("Status: Configured (API Key set) • Click to edit");
-                    statusTextView.setTextColor(Color.parseColor("#03DAC6"));
-                    Toast.makeText(MainActivity.this, provider + " API Key saved to database!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "API Key cannot be empty", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
-
-        builder.show();
-    }
-
-    private View buildMCPView() {
-        ScrollView scrollView = new ScrollView(this);
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-
-        String[][] servers = {
-            {"FileSystem Server", "Status: Connected • 12 tools active", "#03DAC6"},
-            {"Puppeteer Server", "Status: Connected • Browser automation enabled", "#03DAC6"},
-            {"SQLite Server", "Status: Idle • Local database access", "#FFB74D"},
-            {"GitHub API Server", "Status: Disconnected", "#CF6679"}
-        };
-
-        for (String[] s : servers) {
-            LinearLayout card = createCard();
-
-            TextView name = new TextView(this);
-            name.setText("MCP: " + s[0]);
-            name.setTextColor(Color.parseColor("#FFFFFF"));
-            name.setTextSize(16);
-            name.setTypeface(null, Typeface.BOLD);
-
-            TextView info = new TextView(this);
-            info.setText(s[1]);
-            info.setTextColor(Color.parseColor(s[2]));
-            info.setTextSize(14);
-            info.setPadding(0, 8, 0, 0);
-
-            card.addView(name);
-            card.addView(info);
-            container.addView(card);
-        }
-
-        scrollView.addView(container);
-        return scrollView;
-    }
-
-    private View buildChatView() {
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-
-        final ScrollView chatScroll = new ScrollView(this);
-        final LinearLayout chatContainer = new LinearLayout(this);
-        chatContainer.setOrientation(LinearLayout.VERTICAL);
-        chatScroll.addView(chatContainer);
-
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
-                MATCH_PARENT, 0, 1.0f);
-        chatScroll.setLayoutParams(scrollParams);
-
-        addChatMessage(chatContainer, "Assistant", "Hello! Welcome to VibeStudio. How can I assist with your project today?", false);
-        addChatMessage(chatContainer, "User", "Can you build a Material Dark Android app?", true);
-        addChatMessage(chatContainer, "Assistant", "Absolutely! VibeStudio is configured with a Material Dark theme and drawer navigation.", false);
-
-        LinearLayout inputRow = new LinearLayout(this);
-        inputRow.setOrientation(LinearLayout.HORIZONTAL);
-        inputRow.setPadding(0, 12, 0, 0);
-
-        final EditText msgInput = new EditText(this);
-        msgInput.setHint("Message VibeStudio...");
-        msgInput.setHintTextColor(Color.parseColor("#666666"));
-        msgInput.setTextColor(Color.parseColor("#FFFFFF"));
-        msgInput.setBackgroundColor(Color.parseColor("#1E1E24"));
-        msgInput.setPadding(16, 16, 16, 16);
-
-        LinearLayout.LayoutParams inParams = new LinearLayout.LayoutParams(
-                0, WRAP_CONTENT, 1.0f);
-        msgInput.setLayoutParams(inParams);
-
-        Button btnSend = new Button(this);
-        btnSend.setText("SEND");
-        btnSend.setTextColor(Color.parseColor("#121212"));
-        btnSend.setBackgroundColor(Color.parseColor("#03DAC6"));
-
-        btnSend.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String text = msgInput.getText().toString();
-                if (text.length() > 0) {
-                    addChatMessage(chatContainer, "User", text, true);
-                    msgInput.setText("");
-                    addChatMessage(chatContainer, "Assistant", "Received: " + text, false);
-                    chatScroll.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            chatScroll.fullScroll(ScrollView.FOCUS_DOWN);
-                        }
-                    });
-                }
-            }
-        });
-
-        inputRow.addView(msgInput);
-        inputRow.addView(btnSend);
-
-        layout.addView(chatScroll);
-        layout.addView(inputRow);
-        return layout;
-    }
-
-    private void addChatMessage(LinearLayout container, String sender, String text, boolean isUser) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(18, 14, 18, 14);
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                WRAP_CONTENT, WRAP_CONTENT);
-        params.setMargins(0, 0, 0, 16);
-
-        if (isUser) {
-            params.gravity = android.view.Gravity.RIGHT;
-            card.setBackgroundColor(Color.parseColor("#3700B3"));
-        } else {
-            params.gravity = android.view.Gravity.LEFT;
-            card.setBackgroundColor(Color.parseColor("#25252A"));
-        }
-        card.setLayoutParams(params);
-
-        TextView tvSender = new TextView(this);
-        tvSender.setText(sender);
-        tvSender.setTextColor(isUser ? Color.parseColor("#03DAC6") : Color.parseColor("#BB86FC"));
-        tvSender.setTextSize(12);
-        tvSender.setTypeface(null, Typeface.BOLD);
-
-        TextView tvText = new TextView(this);
-        tvText.setText(text);
-        tvText.setTextColor(Color.parseColor("#FFFFFF"));
-        tvText.setTextSize(14);
-        tvText.setPadding(0, 4, 0, 0);
-
-        card.addView(tvSender);
-        card.addView(tvText);
-        container.addView(card);
-    }
-
-    private View buildPermissionsView() {
-        ScrollView scrollView = new ScrollView(this);
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-
-        String[][] permissions = {
-            {"INTERNET", "Allows app to communicate with remote MCP servers and models", "Granted"},
-            {"WRITE_EXTERNAL_STORAGE", "Required for file output and export", "Granted"},
-            {"READ_EXTERNAL_STORAGE", "Required for loading local project files", "Granted"},
-            {"RECORD_AUDIO", "Voice input capabilities for Chat mode", "Prompt on Use"}
-        };
-
-        for (String[] p : permissions) {
-            LinearLayout card = createCard();
-
-            TextView name = new TextView(this);
-            name.setText("Permission: " + p[0]);
-            name.setTextColor(Color.parseColor("#BB86FC"));
-            name.setTextSize(15);
-            name.setTypeface(null, Typeface.BOLD);
-
-            TextView desc = new TextView(this);
-            desc.setText(p[1]);
-            desc.setTextColor(Color.parseColor("#B0B0B0"));
-            desc.setTextSize(13);
-            desc.setPadding(0, 6, 0, 6);
-
-            TextView status = new TextView(this);
-            status.setText("Status: " + p[2]);
-            status.setTextColor(Color.parseColor("#03DAC6"));
-            status.setTextSize(12);
-
-            card.addView(name);
-            card.addView(desc);
-            card.addView(status);
-            container.addView(card);
-        }
-
-        scrollView.addView(container);
-        return scrollView;
     }
 }
