@@ -294,6 +294,7 @@ public class MainActivity extends Activity {
         consoleOutput.setBackgroundColor(Color.parseColor("#0D0D11"));
         consoleOutput.setTypeface(Typeface.MONOSPACE);
         consoleOutput.setPadding(20, 20, 20, 20);
+        consoleOutput.setKeyListener(null); // Read-only: prevents keyboard input while allowing text selection & copy
 
         outputScroll.addView(consoleOutput);
         LinearLayout.LayoutParams outParams = new LinearLayout.LayoutParams(
@@ -352,8 +353,6 @@ public class MainActivity extends Activity {
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
         try {
-            // Android SELinux prevents direct execve on files in /data/data private dir.
-            // Executing through /system/bin/sh handles commands and custom scripts smoothly.
             ProcessBuilder pb = new ProcessBuilder("/system/bin/sh", "-c", cmd);
 
             Map<String, String> env = pb.environment();
@@ -500,6 +499,7 @@ public class MainActivity extends Activity {
         tvText.setTextSize(14);
         tvText.setPadding(0, 4, 0, 0);
         tvText.setBackgroundColor(Color.TRANSPARENT);
+        tvText.setKeyListener(null); // Read-only: selection allowed, keyboard disabled
 
         card.addView(tvSender);
         card.addView(tvText);
