@@ -292,13 +292,18 @@ public class MainActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
 
         final ScrollView outputScroll = new ScrollView(this);
-        final EditText consoleOutput = new EditText(this);
+        final TextView consoleOutput = new TextView(this);
         consoleOutput.setText("vibestudio@android:~$ ");
         consoleOutput.setTextColor(Color.parseColor("#00FF66"));
         consoleOutput.setBackgroundColor(Color.parseColor("#0D0D11"));
         consoleOutput.setTypeface(Typeface.MONOSPACE);
         consoleOutput.setPadding(20, 20, 20, 20);
-        consoleOutput.setKeyListener(null); // Read-only: selection allowed, keyboard editing disabled
+
+        // Standard TextView text selection for Android
+        consoleOutput.setFocusable(true);
+        consoleOutput.setFocusableInTouchMode(true);
+        consoleOutput.setClickable(true);
+        consoleOutput.setLongClickable(true);
 
         outputScroll.addView(consoleOutput);
         LinearLayout.LayoutParams outParams = new LinearLayout.LayoutParams(
@@ -385,7 +390,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void executeCommandInBash(String cmd, final EditText consoleOutput, final ScrollView outputScroll, final Button btnSend, final EditText cmdInput) {
+    private void executeCommandInBash(String cmd, final TextView consoleOutput, final ScrollView outputScroll, final Button btnSend, final EditText cmdInput) {
         String envHome = mDbHelper.getSetting("env_home");
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
@@ -532,13 +537,11 @@ public class MainActivity extends Activity {
         tvSender.setTextSize(12);
         tvSender.setTypeface(null, Typeface.BOLD);
 
-        EditText tvText = new EditText(this);
+        TextView tvText = new TextView(this);
         tvText.setText(text);
         tvText.setTextColor(Color.parseColor("#FFFFFF"));
         tvText.setTextSize(14);
         tvText.setPadding(0, 4, 0, 0);
-        tvText.setBackgroundColor(Color.TRANSPARENT);
-        tvText.setKeyListener(null); // Read-only: selection allowed, keyboard editing disabled
 
         card.addView(tvSender);
         card.addView(tvText);
