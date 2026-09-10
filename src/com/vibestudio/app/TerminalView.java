@@ -3,11 +3,8 @@ package com.vibestudio.app;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
 import android.text.InputType;
-import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -17,31 +14,26 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ScrollView;
 
-import java.io.File;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Map;
-
-public class TerminalView {
+public class TerminalView implements TerminalService.OutputListener {
 
     private static final int MATCH_PARENT = -1;
 
     private final Context mContext;
-    private final DatabaseHelper mDbHelper;
-    private final Handler mHandler;
-
-    private Process mProcess;
-    private OutputStream mProcessInput;
-    private InputStream mProcessOutput;
-
     private ScrollView mScrollView;
     private EditText mTerminalBuffer;
+
+    private TerminalService mTerminalService;
     private boolean mIsWritingFromProcess = false;
 
-    public TerminalView(Context context, DatabaseHelper dbHelper) {
+    public TerminalView(Context context) {
         mContext = context;
-        mDbHelper = dbHelper;
-        mHandler = new Handler(Looper.getMainLooper());
+    }
+
+    public void setTerminalService(TerminalService service) {
+        mTerminalService = service;
+        if (mTerminalService != null) {
+            mTerminalService.setOutputListener(this);
+        }
     }
 
     public View buildView() {
@@ -70,6 +62,7 @@ public class TerminalView {
         mScrollView.addView(mTerminalBuffer, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
         container.addView(mScrollView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
+        // Forward user key strokes / text edits to TerminalService
         mTerminalBuffer.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -78,11 +71,11 @@ public class TerminalView {
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (mIsWritingFromProcess) return;
 
-                if (count > 0 && mProcessInput != null) {
+                if (count > 0 && mTerminalService != null) {
                     CharSequence added = s.subSequence(start, start + count);
-                    sendToProcess(added.toString());
-                } else if (before > 0 && count == 0 && mProcessInput != null) {
-                    sendToProcess("\b");
+                    mTerminalService.writeInput(added.toString());
+                } else if (before > 0 && count == 0 && mTerminalService != null) {
+                    mTerminalService.writeInput("\b");
                 }
             }
 
@@ -94,81 +87,21 @@ public class TerminalView {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
-                    sendToProcess("\n");
+                    if (mTerminalService != null) {
+                        mTerminalService.writeInput("\n");
+                    }
                     return true;
                 }
                 return false;
             }
         });
 
-        startShellProcess();
-
         return container;
     }
 
-    private void sendToProcess(final String text) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    if (mProcessInput != null) {
-                        mProcessInput.write(text.getBytes("UTF-8"));
-                        if ("\n".equals(text)) {
-                            // Ensure newline is flushed and processed as command execution line
-                            mProcessInput.write("\n".getBytes("UTF-8"));
-                        }
-                        mProcessInput.flush();
-                    }
-                } catch (Exception ignored) {}
-            }
-        }).start();
-    }
-
-    private void startShellProcess() {
-        String envHome = mDbHelper.getSetting("env_home");
-        String envPrefix = mDbHelper.getSetting("env_prefix");
-
-        try {
-            ProcessBuilder pb = new ProcessBuilder("/system/bin/sh");
-
-            Map<String, String> env = pb.environment();
-            if (!TextUtils.isEmpty(envHome)) env.put("HOME", envHome);
-            if (!TextUtils.isEmpty(envPrefix)) env.put("PREFIX", envPrefix);
-            env.put("PATH", (envPrefix != null ? envPrefix + "/bin:" : "") + "/system/bin:/system/xbin");
-            env.put("TERM", "xterm-256color");
-
-            if (!TextUtils.isEmpty(envHome) && new File(envHome).exists()) {
-                pb.directory(new File(envHome));
-            }
-
-            pb.redirectErrorStream(true);
-            mProcess = pb.start();
-
-            mProcessInput = mProcess.getOutputStream();
-            mProcessOutput = mProcess.getInputStream();
-
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    byte[] buffer = new byte[1024];
-                    int length;
-                    try {
-                        while ((length = mProcessOutput.read(buffer)) != -1) {
-                            final String text = new String(buffer, 0, length, "UTF-8");
-                            mHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    appendOutputToTerminal(text);
-                                }
-                            });
-                        }
-                    } catch (Exception ignored) {}
-                }
-            }).start();
-
-        } catch (Exception e) {
-            appendOutputToTerminal("[Error starting terminal session]: " + e.getMessage() + "\n");
-        }
+    @Override
+    public void onOutput(String text) {
+        appendOutputToTerminal(text);
     }
 
     private void appendOutputToTerminal(String text) {

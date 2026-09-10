@@ -10,7 +10,11 @@
         android:label="VibeStudio" 
         android:theme="@android:style/Theme.Black.NoTitleBar"
         android:allowBackup="true">
-        
+
+        <service 
+            android:name=".TerminalService" 
+            android:exported="false" />
+
         <activity 
             android:name=".OnboardingActivity" 
             android:label="VibeStudio" 
