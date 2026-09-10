@@ -9,14 +9,15 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.LinearLayout;
+import android.widget.FrameLayout;
 import android.widget.ScrollView;
-import android.widget.TextView;
 
 import java.io.File;
 import java.io.InputStream;
@@ -38,7 +39,6 @@ public class TerminalView {
     private ScrollView mScrollView;
     private EditText mTerminalBuffer;
     private boolean mIsWritingFromProcess = false;
-    private int mLastBufferLength = 0;
 
     public TerminalView(Context context, DatabaseHelper dbHelper) {
         mContext = context;
@@ -47,19 +47,21 @@ public class TerminalView {
     }
 
     public View buildView() {
-        LinearLayout layout = new LinearLayout(mContext);
-        layout.setOrientation(LinearLayout.VERTICAL);
+        FrameLayout container = new FrameLayout(mContext);
+        container.setBackgroundColor(Color.parseColor("#0D0D11"));
 
         mScrollView = new ScrollView(mContext);
+        mScrollView.setFillViewport(true);
+
         mTerminalBuffer = new EditText(mContext);
-
         mTerminalBuffer.setTextColor(Color.parseColor("#00FF66"));
-        mTerminalBuffer.setBackgroundColor(Color.parseColor("#0D0D11"));
+        mTerminalBuffer.setBackgroundColor(Color.TRANSPARENT);
         mTerminalBuffer.setTypeface(Typeface.MONOSPACE);
-        mTerminalBuffer.setTextSize(13);
+        mTerminalBuffer.setTextSize(14);
         mTerminalBuffer.setPadding(24, 24, 24, 24);
+        mTerminalBuffer.setGravity(Gravity.TOP | Gravity.LEFT);
 
-        // Configure as a full-screen terminal canvas
+        // Termux-like full terminal canvas configuration
         mTerminalBuffer.setInputType(InputType.TYPE_CLASS_TEXT |
                 InputType.TYPE_TEXT_FLAG_MULTI_LINE |
                 InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -68,10 +70,10 @@ public class TerminalView {
         mTerminalBuffer.setFocusable(true);
         mTerminalBuffer.setFocusableInTouchMode(true);
 
-        mScrollView.addView(mTerminalBuffer, new LinearLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
-        layout.addView(mScrollView, new LinearLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+        mScrollView.addView(mTerminalBuffer, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+        container.addView(mScrollView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
-        // Send typed text directly to process stdin
+        // Connect user typing directly to process stdin
         mTerminalBuffer.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -84,7 +86,6 @@ public class TerminalView {
                     CharSequence added = s.subSequence(start, start + count);
                     sendToProcess(added.toString());
                 } else if (before > 0 && count == 0 && mProcessInput != null) {
-                    // Send backspace / delete ASCII byte
                     sendToProcess("\b");
                 }
             }
@@ -93,7 +94,6 @@ public class TerminalView {
             public void afterTextChanged(Editable s) {}
         });
 
-        // Capture Enter key press on soft/hardware keyboards
         mTerminalBuffer.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -107,7 +107,7 @@ public class TerminalView {
 
         startShellProcess();
 
-        return layout;
+        return container;
     }
 
     private void sendToProcess(final String text) {
@@ -147,7 +147,6 @@ public class TerminalView {
             mProcessInput = mProcess.getOutputStream();
             mProcessOutput = mProcess.getInputStream();
 
-            // Background reader thread for stdout/stderr
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -176,7 +175,6 @@ public class TerminalView {
         mIsWritingFromProcess = true;
         mTerminalBuffer.append(text);
         mTerminalBuffer.setSelection(mTerminalBuffer.getText().length());
-        mLastBufferLength = mTerminalBuffer.getText().length();
         mIsWritingFromProcess = false;
 
         mScrollView.post(new Runnable() {
