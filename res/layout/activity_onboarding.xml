@@ -12,8 +12,8 @@
         android:layout_height="-2px"
         android:orientation="horizontal"
         android:gravity="center"
-        android:paddingTop="16dp"
-        android:paddingBottom="24dp">
+        android:paddingTop="12dp"
+        android:paddingBottom="20dp">
 
         <!-- Step 1 Item -->
         <LinearLayout
@@ -24,12 +24,12 @@
 
             <TextView
                 android:id="@+id/step1_indicator"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:background="@drawable/bg_step_circle_active"
                 android:textColor="#FFFFFF"
                 android:text="1"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:gravity="center" />
 
@@ -39,19 +39,19 @@
                 android:layout_height="-2px"
                 android:text="Welcome"
                 android:textColor="#FFFFFF"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
-                android:layout_marginLeft="8dp" />
+                android:layout_marginLeft="6dp" />
         </LinearLayout>
 
-        <!-- Divider Line -->
+        <!-- Divider Line 1 -->
         <View
-            android:id="@+id/step_divider"
-            android:layout_width="40dp"
+            android:id="@+id/step_divider_1"
+            android:layout_width="24dp"
             android:layout_height="2dp"
             android:background="#333333"
-            android:layout_marginLeft="12dp"
-            android:layout_marginRight="12dp" />
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp" />
 
         <!-- Step 2 Item -->
         <LinearLayout
@@ -62,12 +62,12 @@
 
             <TextView
                 android:id="@+id/step2_indicator"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:background="@drawable/bg_step_circle_inactive"
                 android:textColor="#888888"
                 android:text="2"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:gravity="center" />
 
@@ -77,8 +77,45 @@
                 android:layout_height="-2px"
                 android:text="Features"
                 android:textColor="#666666"
+                android:textSize="12sp"
+                android:layout_marginLeft="6dp" />
+        </LinearLayout>
+
+        <!-- Divider Line 2 -->
+        <View
+            android:id="@+id/step_divider_2"
+            android:layout_width="24dp"
+            android:layout_height="2dp"
+            android:background="#333333"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp" />
+
+        <!-- Step 3 Item (Environment Install) -->
+        <LinearLayout
+            android:layout_width="-2px"
+            android:layout_height="-2px"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/step3_indicator"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_step_circle_inactive"
+                android:textColor="#888888"
+                android:text="3"
                 android:textSize="13sp"
-                android:layout_marginLeft="8dp" />
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/step3_title"
+                android:layout_width="-2px"
+                android:layout_height="-2px"
+                android:text="Environment"
+                android:textColor="#666666"
+                android:textSize="12sp"
+                android:layout_marginLeft="6dp" />
         </LinearLayout>
 
     </LinearLayout>
@@ -89,7 +126,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:background="@drawable/bg_card"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <!-- Step 1 Content -->
         <LinearLayout
@@ -104,17 +141,17 @@
                 android:layout_width="-2px"
                 android:layout_height="-2px"
                 android:text="🚀"
-                android:textSize="72sp"
-                android:layout_marginBottom="24dp" />
+                android:textSize="64sp"
+                android:layout_marginBottom="20dp" />
 
             <TextView
                 android:layout_width="-2px"
                 android:layout_height="-2px"
                 android:text="Welcome to VibeStudio"
                 android:textColor="#FFFFFF"
-                android:textSize="22sp"
+                android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="10dp" />
 
             <TextView
                 android:layout_width="-2px"
@@ -123,7 +160,7 @@
                 android:textColor="#AAAAAA"
                 android:textSize="14sp"
                 android:gravity="center"
-                android:lineSpacingExtra="4dp" />
+                android:lineSpacingExtra="3dp" />
         </LinearLayout>
 
         <!-- Step 2 Content -->
@@ -139,17 +176,17 @@
                 android:layout_width="-2px"
                 android:layout_height="-2px"
                 android:text="⚡"
-                android:textSize="72sp"
-                android:layout_marginBottom="24dp" />
+                android:textSize="64sp"
+                android:layout_marginBottom="20dp" />
 
             <TextView
                 android:layout_width="-2px"
                 android:layout_height="-2px"
                 android:text="Powerful Toolkit"
                 android:textColor="#FFFFFF"
-                android:textSize="22sp"
+                android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="10dp" />
 
             <TextView
                 android:layout_width="-2px"
@@ -158,7 +195,62 @@
                 android:textColor="#AAAAAA"
                 android:textSize="14sp"
                 android:gravity="center"
-                android:lineSpacingExtra="4dp" />
+                android:lineSpacingExtra="3dp" />
+        </LinearLayout>
+
+        <!-- Step 3 Content (Proot Environment Installation) -->
+        <LinearLayout
+            android:id="@+id/step3_layout"
+            android:layout_width="-1px"
+            android:layout_height="-1px"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="-2px"
+                android:layout_height="-2px"
+                android:text="🐧"
+                android:textSize="54sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="-2px"
+                android:layout_height="-2px"
+                android:text="Installing Environment"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/status_message"
+                android:layout_width="-2px"
+                android:layout_height="-2px"
+                android:text="Preparing proot Linux environment with bash..."
+                android:textColor="#3B82F6"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Log Terminal Output View -->
+            <ScrollView
+                android:layout_width="-1px"
+                android:layout_height="140dp"
+                android:background="#0A0A0A"
+                android:padding="10dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/install_log_text"
+                    android:layout_width="-1px"
+                    android:layout_height="-2px"
+                    android:textColor="#00FF66"
+                    android:textSize="11sp"
+                    android:typeface="monospace"
+                    android:text="[installer] Ready to set up Termux-like environment.\n[installer] Target: /data/data/com.vibestudio.app/files/usr\n" />
+            </ScrollView>
+
         </LinearLayout>
 
     </FrameLayout>
@@ -169,7 +261,7 @@
         android:layout_height="-2px"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="20dp">
+        android:layout_marginTop="16dp">
 
         <Button
             android:id="@+id/btn_back"
@@ -179,7 +271,7 @@
             android:text="Back"
             android:textColor="#CCCCCC"
             android:background="@drawable/bg_btn_secondary"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:visibility="invisible"
             android:layout_marginRight="8dp" />
 
@@ -191,7 +283,7 @@
             android:text="Next"
             android:textColor="#FFFFFF"
             android:background="@drawable/bg_btn_primary"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold"
             android:layout_marginLeft="8dp" />
 

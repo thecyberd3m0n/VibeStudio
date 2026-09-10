@@ -17,26 +17,34 @@ public final class R {
         public static final int bg_btn_primary=0x7f020000;
         public static final int bg_btn_secondary=0x7f020001;
         public static final int bg_card=0x7f020002;
-        public static final int bg_step_circle_active=0x7f020003;
-        public static final int bg_step_circle_inactive=0x7f020004;
+        public static final int bg_progress_bar=0x7f020003;
+        public static final int bg_progress_fill=0x7f020004;
+        public static final int bg_step_circle_active=0x7f020005;
+        public static final int bg_step_circle_inactive=0x7f020006;
     }
     public static final class id {
-        public static final int btn_back=0x7f07000d;
+        public static final int btn_back=0x7f070013;
         public static final int btn_menu=0x7f070001;
-        public static final int btn_next=0x7f07000e;
+        public static final int btn_next=0x7f070014;
         public static final int content_frame=0x7f070003;
         public static final int drawer_layout=0x7f070000;
-        public static final int item_icon=0x7f07000f;
-        public static final int item_title=0x7f070010;
+        public static final int install_log_text=0x7f070012;
+        public static final int item_icon=0x7f070015;
+        public static final int item_title=0x7f070016;
         public static final int left_drawer=0x7f070005;
         public static final int left_drawer_container=0x7f070004;
+        public static final int status_message=0x7f070011;
         public static final int step1_indicator=0x7f070006;
-        public static final int step1_layout=0x7f07000b;
+        public static final int step1_layout=0x7f07000e;
         public static final int step1_title=0x7f070007;
         public static final int step2_indicator=0x7f070009;
-        public static final int step2_layout=0x7f07000c;
+        public static final int step2_layout=0x7f07000f;
         public static final int step2_title=0x7f07000a;
-        public static final int step_divider=0x7f070008;
+        public static final int step3_indicator=0x7f07000c;
+        public static final int step3_layout=0x7f070010;
+        public static final int step3_title=0x7f07000d;
+        public static final int step_divider_1=0x7f070008;
+        public static final int step_divider_2=0x7f07000b;
         public static final int toolbar_title=0x7f070002;
     }
     public static final class integer {
