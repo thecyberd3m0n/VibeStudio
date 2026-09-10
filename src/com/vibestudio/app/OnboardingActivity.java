@@ -39,10 +39,20 @@ public class OnboardingActivity extends Activity {
     private Button mBtnNext;
 
     private Handler mHandler;
+    private DatabaseHelper mDbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mDbHelper = new DatabaseHelper(this);
+
+        // If environment was already initialized previously, redirect directly to MainActivity
+        if (mDbHelper.isEnvInitialized()) {
+            navigateToMain();
+            return;
+        }
+
         setContentView(R.layout.activity_onboarding);
 
         mHandler = new Handler(Looper.getMainLooper());
@@ -176,7 +186,7 @@ public class OnboardingActivity extends Activity {
                     fos.close();
                     bashFile.setExecutable(true, false);
 
-                    Thread.sleep(400);
+                    Thread.sleep(300);
                     appendLog("[installer] Writing environment configuration (PATH, HOME, SHELL)...");
                     File envFile = new File(filesDir, "env.sh");
                     FileOutputStream envFos = new FileOutputStream(envFile);
@@ -187,9 +197,15 @@ public class OnboardingActivity extends Activity {
                     envFos.write(envContent.getBytes("UTF-8"));
                     envFos.close();
 
-                    Thread.sleep(400);
-                    appendLog("[installer] Proot environment & bash initialization complete!");
-                    appendLog("[installer] Ready for AI & shell execution.");
+                    Thread.sleep(300);
+                    appendLog("[installer] Saving environment paths & state into SQLite database...");
+                    mDbHelper.setSetting("env_prefix", usrDir.getAbsolutePath());
+                    mDbHelper.setSetting("env_home", homeDir.getAbsolutePath());
+                    mDbHelper.setSetting("env_shell", bashFile.getAbsolutePath());
+                    mDbHelper.setEnvInitialized(true);
+
+                    Thread.sleep(300);
+                    appendLog("[installer] Environment setup complete!");
 
                     mHandler.post(new Runnable() {
                         @Override
