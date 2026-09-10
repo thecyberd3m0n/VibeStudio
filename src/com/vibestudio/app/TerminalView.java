@@ -12,15 +12,15 @@ import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ScrollView;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Map;
 
@@ -61,7 +61,6 @@ public class TerminalView {
         mTerminalBuffer.setPadding(24, 24, 24, 24);
         mTerminalBuffer.setGravity(Gravity.TOP | Gravity.LEFT);
 
-        // Termux-like full terminal canvas configuration
         mTerminalBuffer.setInputType(InputType.TYPE_CLASS_TEXT |
                 InputType.TYPE_TEXT_FLAG_MULTI_LINE |
                 InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -73,7 +72,6 @@ public class TerminalView {
         mScrollView.addView(mTerminalBuffer, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
         container.addView(mScrollView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
-        // Connect user typing directly to process stdin
         mTerminalBuffer.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -129,7 +127,8 @@ public class TerminalView {
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
         try {
-            ProcessBuilder pb = new ProcessBuilder("/system/bin/sh", "-i");
+            // Executing standard shell without -i interactive tty warning
+            ProcessBuilder pb = new ProcessBuilder("/system/bin/sh");
 
             Map<String, String> env = pb.environment();
             if (!TextUtils.isEmpty(envHome)) env.put("HOME", envHome);
