@@ -5,5 +5,20 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        libs {
+            from(files("libtermux-android/gradle/libs.versions.toml"))
+        }
+    }
+}
+
 rootProject.name = "VibeStudio"
 include ':app'
+// --- Add libtermux-android submodule modules as root projects to satisfy internal dependencies ---
+include ':core'
+project(':core').projectDir = file('libtermux-android/core')
+
+include ':terminal-view'
+project(':terminal-view').projectDir = file('libtermux-android/terminal-view')

@@ -26,29 +26,48 @@ VibeStudio now follows the standard Android Gradle Plugin (AGP) structure:
 - `app/src/main/AndroidManifest.xml` - App configuration
 - `build.gradle` / `app/build.gradle` - Build system configuration
 
+## Getting Started
+
+### 1. Clone the Repository
+VibeStudio uses git submodules for its core terminal functionality. Clone recursively to ensure all components are downloaded:
+
+```bash
+git clone --recursive https://github.com/AeonCoreX-Lab/VibeStudio.git
+```
+
+If you have already cloned the repository without submodules, run:
+```bash
+git submodule update --init --recursive
+```
+
 ---
 
 ## Building & Development
 
 ### 1. In Android Studio (Recommended)
-Simply open the root directory in Android Studio and click **Run**. Gradle will automatically download all dependencies.
+1. Open Android Studio.
+2. Select **Open** and navigate to the `VibeStudio` root directory.
+3. Wait for the Gradle sync to finish.
+4. Click **Run** or use the **Build** menu to generate the APK.
 
-### 2. In Termux (Manual Shell Build)
-If you prefer building manually on-device using `build.sh`, you will need the following libraries in your classpath:
+### 2. In Termux (CLI Build)
+VibeStudio is designed to be buildable directly on Android using Termux.
 
-- **Android SDK (`android.jar`)**: targetSdkVersion 34.
-- **AndroidX Libraries**: Since the project was migrated to AndroidX, `javac` now requires:
-    - `androidx.appcompat:appcompat`
-    - `androidx.drawerlayout:drawerlayout`
-    - `androidx.core:core`
-    - `com.google.android.material:material`
+#### A. Building with Gradle (Easiest)
+Install the required packages and run the Gradle wrapper:
+```bash
+pkg install openjdk-17 gradle
+./gradlew assembleDebug
+```
+The resulting APK will be located in `app/build/outputs/apk/debug/`.
 
-> [!TIP]
-> The easiest way to build in Termux is to install `gradle` (`pkg install gradle`) and run:
-> ```bash
-> ./gradlew assembleDebug
-> ```
-> This will manage all AndroidX dependencies automatically.
+#### B. Native Build (Legacy/Advanced)
+For developers who prefer using native tools (`aapt`, `javac`, `kotlinc`, `dx`) without Gradle, custom scripts are provided:
+- `compile_libtermux.sh`: Compiles the Kotlin core library.
+- `build.sh`: Packages and signs the final application.
+
+> [!WARNING]
+> These scripts use hardcoded paths for `android.jar` and specific toolchains. You may need to edit them to match your local Termux environment.
 
 ---
 
