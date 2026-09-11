@@ -38,16 +38,16 @@ public class TerminalView implements TerminalService.OutputListener {
 
     public View buildView() {
         FrameLayout container = new FrameLayout(mContext);
-        container.setBackgroundColor(Color.parseColor("#0D0D11"));
+        container.setBackgroundColor(Color.parseColor("#1E1E2E"));
 
         mScrollView = new ScrollView(mContext);
         mScrollView.setFillViewport(true);
 
         mTerminalBuffer = new EditText(mContext);
-        mTerminalBuffer.setTextColor(Color.parseColor("#00FF66"));
+        mTerminalBuffer.setTextColor(Color.parseColor("#CDD6F4"));
         mTerminalBuffer.setBackgroundColor(Color.TRANSPARENT);
         mTerminalBuffer.setTypeface(Typeface.MONOSPACE);
-        mTerminalBuffer.setTextSize(14);
+        mTerminalBuffer.setTextSize(13);
         mTerminalBuffer.setPadding(24, 24, 24, 24);
         mTerminalBuffer.setGravity(Gravity.TOP | Gravity.LEFT);
 
@@ -62,7 +62,6 @@ public class TerminalView implements TerminalService.OutputListener {
         mScrollView.addView(mTerminalBuffer, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
         container.addView(mScrollView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
 
-        // Forward user key strokes / text edits to TerminalService
         mTerminalBuffer.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}

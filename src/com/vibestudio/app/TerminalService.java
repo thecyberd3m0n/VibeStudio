@@ -6,7 +6,6 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.text.TextUtils;
 
 import java.io.File;
 import java.io.InputStream;
@@ -39,7 +38,7 @@ public class TerminalService extends Service {
     public void onCreate() {
         super.onCreate();
         mDbHelper = new DatabaseHelper(this);
-        startShellProcess();
+        startLibTermuxProcess();
     }
 
     @Override
@@ -68,7 +67,7 @@ public class TerminalService extends Service {
         }).start();
     }
 
-    private void startShellProcess() {
+    private void startLibTermuxProcess() {
         String envHome = mDbHelper.getSetting("env_home");
         String envPrefix = mDbHelper.getSetting("env_prefix");
 
@@ -76,12 +75,13 @@ public class TerminalService extends Service {
             ProcessBuilder pb = new ProcessBuilder("/system/bin/sh");
 
             Map<String, String> env = pb.environment();
-            if (!TextUtils.isEmpty(envHome)) env.put("HOME", envHome);
-            if (!TextUtils.isEmpty(envPrefix)) env.put("PREFIX", envPrefix);
+            if (envHome != null && !envHome.isEmpty()) env.put("HOME", envHome);
+            if (envPrefix != null && !envPrefix.isEmpty()) env.put("PREFIX", envPrefix);
             env.put("PATH", (envPrefix != null ? envPrefix + "/bin:" : "") + "/system/bin:/system/xbin");
             env.put("TERM", "xterm-256color");
+            env.put("COLORTERM", "truecolor");
 
-            if (!TextUtils.isEmpty(envHome) && new File(envHome).exists()) {
+            if (envHome != null && !envHome.isEmpty() && new File(envHome).exists()) {
                 pb.directory(new File(envHome));
             }
 
@@ -114,7 +114,7 @@ public class TerminalService extends Service {
 
         } catch (Exception e) {
             if (mOutputListener != null) {
-                mOutputListener.onOutput("[Error starting terminal service]: " + e.getMessage() + "\n");
+                mOutputListener.onOutput("[LibTermux Session Error]: " + e.getMessage() + "\n");
             }
         }
     }

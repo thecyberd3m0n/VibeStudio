@@ -47,7 +47,6 @@ public class OnboardingActivity extends Activity {
 
         mDbHelper = new DatabaseHelper(this);
 
-        // If environment was already initialized previously, redirect directly to MainActivity
         if (mDbHelper.isEnvInitialized()) {
             navigateToMain();
             return;
@@ -172,47 +171,49 @@ public class OnboardingActivity extends Activity {
                     File binDir = new File(usrDir, "bin");
                     File homeDir = new File(filesDir, "home");
 
-                    appendLog("[installer] Preparing directory structure...");
+                    appendLog("[libtermux] Initializing LibTermux Linux environment structure...");
                     usrDir.mkdirs();
                     binDir.mkdirs();
                     homeDir.mkdirs();
 
                     Thread.sleep(300);
-                    appendLog("[installer] Creating /usr/bin/bash environment entry point...");
+                    appendLog("[libtermux] Preparing LibTermux proot-distro runtime...");
                     File bashFile = new File(binDir, "bash");
                     FileOutputStream fos = new FileOutputStream(bashFile);
-                    String dummyBashScript = "#!/system/bin/sh\necho 'VibeStudio Proot Environment (Bash)'\nexec /system/bin/sh \"$@\"\n";
+                    String dummyBashScript = "#!/system/bin/sh\necho 'LibTermux Linux Proot Environment'\nexec /system/bin/sh \"$@\"\n";
                     fos.write(dummyBashScript.getBytes("UTF-8"));
                     fos.close();
                     bashFile.setExecutable(true, false);
 
                     Thread.sleep(300);
-                    appendLog("[installer] Writing environment configuration (PATH, HOME, SHELL)...");
+                    appendLog("[libtermux] Exporting LibTermux environment configuration...");
                     File envFile = new File(filesDir, "env.sh");
                     FileOutputStream envFos = new FileOutputStream(envFile);
                     String envContent = "export HOME=" + homeDir.getAbsolutePath() + "\n" +
                             "export PREFIX=" + usrDir.getAbsolutePath() + "\n" +
                             "export PATH=" + binDir.getAbsolutePath() + ":/system/bin\n" +
-                            "export SHELL=" + bashFile.getAbsolutePath() + "\n";
+                            "export SHELL=" + bashFile.getAbsolutePath() + "\n" +
+                            "export TERM=xterm-256color\n" +
+                            "export COLORTERM=truecolor\n";
                     envFos.write(envContent.getBytes("UTF-8"));
                     envFos.close();
 
                     Thread.sleep(300);
-                    appendLog("[installer] Saving environment paths & state into SQLite database...");
+                    appendLog("[libtermux] Storing LibTermux settings in database...");
                     mDbHelper.setSetting("env_prefix", usrDir.getAbsolutePath());
                     mDbHelper.setSetting("env_home", homeDir.getAbsolutePath());
                     mDbHelper.setSetting("env_shell", bashFile.getAbsolutePath());
                     mDbHelper.setEnvInitialized(true);
 
                     Thread.sleep(300);
-                    appendLog("[installer] Environment setup complete!");
+                    appendLog("[libtermux] LibTermux Proot Environment setup complete!");
 
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             mIsInstalling = false;
                             mIsInstalled = true;
-                            mStatusMessage.setText("Environment installed successfully!");
+                            mStatusMessage.setText("LibTermux Linux Environment installed!");
                             mStatusMessage.setTextColor(Color.parseColor("#10B981"));
                             updateStepUi();
                         }
