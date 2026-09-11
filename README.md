@@ -19,11 +19,36 @@
 
 ## Architecture & Layout
 
-- `AndroidManifest.xml` - Application manifest
-- `res/` - Layouts and drawables
-- `src/` - Java source files
-- `bin/` - Build output (ignored)
-- `obj/` - Compiled class files (ignored)
+VibeStudio now follows the standard Android Gradle Plugin (AGP) structure:
+
+- `app/src/main/java/` - Java source files
+- `app/src/main/res/` - UI layouts, strings, and resources
+- `app/src/main/AndroidManifest.xml` - App configuration
+- `build.gradle` / `app/build.gradle` - Build system configuration
+
+---
+
+## Building & Development
+
+### 1. In Android Studio (Recommended)
+Simply open the root directory in Android Studio and click **Run**. Gradle will automatically download all dependencies.
+
+### 2. In Termux (Manual Shell Build)
+If you prefer building manually on-device using `build.sh`, you will need the following libraries in your classpath:
+
+- **Android SDK (`android.jar`)**: targetSdkVersion 34.
+- **AndroidX Libraries**: Since the project was migrated to AndroidX, `javac` now requires:
+    - `androidx.appcompat:appcompat`
+    - `androidx.drawerlayout:drawerlayout`
+    - `androidx.core:core`
+    - `com.google.android.material:material`
+
+> [!TIP]
+> The easiest way to build in Termux is to install `gradle` (`pkg install gradle`) and run:
+> ```bash
+> ./gradlew assembleDebug
+> ```
+> This will manage all AndroidX dependencies automatically.
 
 ---
 
