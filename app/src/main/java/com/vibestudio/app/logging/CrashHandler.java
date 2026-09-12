@@ -48,12 +48,12 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
     }
 
     public void logError(String tag, String message, Throwable throwable) {
-        Log.e(tag, message, throwable);
+        com.vibestudio.app.service.LogViewerService.getInstance().e(tag, message, throwable);
         writeLogToFile("ERROR", tag, message, throwable);
     }
 
     public void handleException(String tag, String message, Throwable throwable) {
-        Log.e(tag, message, throwable);
+        com.vibestudio.app.service.LogViewerService.getInstance().e(tag, message, throwable);
         String logText = saveCrashLog(Thread.currentThread(), throwable);
         launchCrashActivity(logText);
     }
@@ -83,7 +83,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
                 context.startActivity(intent);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to launch CrashActivity", e);
+            com.vibestudio.app.service.LogViewerService.getInstance().e(TAG, "Failed to launch CrashActivity", e);
         }
     }
 
@@ -128,7 +128,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             } catch (Exception ignored) {}
 
         } catch (Exception e) {
-            Log.e(TAG, "Error writing crash log to file", e);
+            com.vibestudio.app.service.LogViewerService.getInstance().e(TAG, "Error writing crash log to file", e);
         }
     }
 
@@ -137,7 +137,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             writer.write(text);
             writer.flush();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to write to file: " + file.getAbsolutePath(), e);
+            com.vibestudio.app.service.LogViewerService.getInstance().e(TAG, "Failed to write to file: " + file.getAbsolutePath(), e);
         }
     }
 }

@@ -1,19 +1,25 @@
 package com.vibestudio.app.activity;
-import com.vibestudio.app.R;
-import com.vibestudio.app.db.DatabaseHelper;
-import com.vibestudio.app.fragments.*;
 
 import android.os.Bundle;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.drawerlayout.widget.DrawerLayout;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+
+import com.vibestudio.app.R;
+import com.vibestudio.app.fragments.ChatFragment;
+import com.vibestudio.app.fragments.LogViewerFragment;
+import com.vibestudio.app.fragments.McpFragment;
+import com.vibestudio.app.fragments.ModelsFragment;
+import com.vibestudio.app.fragments.PermissionsFragment;
+import com.vibestudio.app.fragments.TerminalFragment;
+import com.vibestudio.app.service.LogViewerService;
 
 public class MainActivity extends FragmentActivity {
 
@@ -32,7 +38,8 @@ public class MainActivity extends FragmentActivity {
         new MenuItem("MCP", "🔌"),
         new MenuItem("Terminal", "💻"),
         new MenuItem("Chat", "💬"),
-        new MenuItem("Permissions", "🔒")
+        new MenuItem("Permissions", "🔒"),
+        new MenuItem("Logs", "📋")
     };
 
     private DrawerLayout mDrawerLayout;
@@ -44,6 +51,8 @@ public class MainActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        LogViewerService.getInstance().i("MainActivity", "MainActivity created");
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerContainer = findViewById(R.id.left_drawer_container);
@@ -98,6 +107,8 @@ public class MainActivity extends FragmentActivity {
         mToolbarTitle.setText(item.title);
         mDrawerList.setItemChecked(position, true);
 
+        LogViewerService.getInstance().i("MainActivity", "Selected navigation view: " + item.title);
+
         Fragment fragment;
         switch (position) {
             case 0:
@@ -114,6 +125,9 @@ public class MainActivity extends FragmentActivity {
                 break;
             case 4:
                 fragment = new PermissionsFragment();
+                break;
+            case 5:
+                fragment = new LogViewerFragment();
                 break;
             default:
                 fragment = new ModelsFragment();
