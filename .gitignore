@@ -9,3 +9,8 @@ libs/deps/
 libs/android.jar
 libs/libtermux.jar
 build_termux.sh
+
+# Generated R sources and AAPT2 compilation outputs
+gen_r/
+compiled_res/
+build/extracted_aars/
