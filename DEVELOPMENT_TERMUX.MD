@@ -1,17 +1,19 @@
 # DEVELOPMENT_TERMUX.MD - VibeStudio Termux Development & Debugging Guide
 
-This guide explains how to build, test, and debug VibeStudio APK installation on Android via Termux.
+This guide explains how to build, test, and run VibeStudio on Android via Termux in the simplest way.
 
 ---
 
-## 1. Quick Start Commands
+## 1. Quick Start Commands (Simplest Way to Run)
 
 - **Install dependencies (one-time setup)**:
   `./install_dependencies_termux.sh`
 - **Build APK**:
   `./build.sh`
-- **Open / Install APK**:
+- **Run / Install APK (Simplest Way)**:
   `termux-open bin/VibeStudio.apk`
+
+Executing `termux-open bin/VibeStudio.apk` opens the Android Package Installer directly from Termux, allowing you to install and launch the application immediately.
 
 ---
 

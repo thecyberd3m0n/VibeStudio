@@ -1,12 +1,7 @@
 package com.vibestudio.app;
 
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
 import androidx.drawerlayout.widget.DrawerLayout;
 import android.view.View;
 import android.view.ViewGroup;
@@ -49,27 +44,6 @@ public class MainActivity extends Activity {
     private ChatView mChatView;
     private PermissionsView mPermissionsView;
 
-    private TerminalService mTerminalService;
-    private boolean mIsBound = false;
-
-    private final ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            TerminalService.LocalBinder binder = (TerminalService.LocalBinder) service;
-            mTerminalService = binder.getService();
-            mIsBound = true;
-            if (mTerminalView != null) {
-                mTerminalView.setTerminalService(mTerminalService);
-            }
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mTerminalService = null;
-            mIsBound = false;
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,11 +55,6 @@ public class MainActivity extends Activity {
         mTerminalView = new TerminalView(this);
         mChatView = new ChatView(this);
         mPermissionsView = new PermissionsView(this);
-
-        // Bind to TerminalService
-        Intent serviceIntent = new Intent(this, TerminalService.class);
-        startService(serviceIntent);
-        bindService(serviceIntent, mConnection, Context.BIND_AUTO_CREATE);
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerContainer = findViewById(R.id.left_drawer_container);
@@ -162,14 +131,5 @@ public class MainActivity extends Activity {
         }
 
         mDrawerLayout.closeDrawer(mDrawerContainer);
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (mIsBound) {
-            unbindService(mConnection);
-            mIsBound = false;
-        }
-        super.onDestroy();
     }
 }

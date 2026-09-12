@@ -3,7 +3,7 @@ set -e
 
 echo "=== VibeStudio Termux Standalone Build ==="
 
-# 1. Ensure android.jar (API 30+) exists in libs/
+# 1. Ensure directories exist
 mkdir -p libs/deps bin obj libtermux_classes compiled_res gen_r build/extracted_aars
 
 if [ ! -f "libs/android.jar" ]; then
@@ -15,6 +15,8 @@ fi
 
 # 2. Download dependencies via Maven
 echo "=== Resolving dependencies via Maven ==="
+rm -rf libs/deps
+mkdir -p libs/deps
 mvn dependency:copy-dependencies -DoutputDirectory=libs/deps -q
 
 # 3. Extract classes.jar and resources from all AAR files in libs/deps
@@ -42,8 +44,9 @@ for aar in libs/deps/*.aar; do
 done
 EXTRA_PKGS=${EXTRA_PKGS#:}
 
-# Deduplicate conflicting annotation jars
+# Deduplicate conflicting jars
 rm -f libs/deps/annotation-1.1.0.jar libs/deps/annotation-1.0.0.jar libs/deps/annotation-1.2.0.jar libs/deps/annotation-1.6.0.jar
+rm -f libs/deps/kotlin-stdlib-jdk7-*.jar libs/deps/kotlin-stdlib-jdk8-*.jar libs/deps/kotlin-stdlib-common-*.jar
 
 # Build Classpath for Kotlin / Java
 CLASSPATH="libs/android.jar"

@@ -17,10 +17,6 @@
         android:theme="@style/AppTheme"
         android:allowBackup="true">
 
-        <service 
-            android:name=".TerminalService" 
-            android:exported="false" />
-
         <activity 
             android:name=".OnboardingActivity" 
             android:label="VibeStudio" 
