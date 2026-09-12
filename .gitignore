@@ -1,25 +1,11 @@
-# Build and binary artifacts
-bin/
-obj/
-*.apk
-*.dex
-*.idsig
-
-# Keytool / Keystores
-*.keystore
-*.jks
-
-# IDE / System files
-.navigation/
-captures/
-.externalNativeBuild
-.cxx/
-.idea/
 .gradle/
 build/
-local.properties
-*.iml
-
-# OS generated files
-.DS_Store
-Thumbs.db
+bin/
+obj/
+libtermux_classes/
+app/src/main/java/com/vibestudio/app/R.java
+debug.keystore
+libs/deps/
+libs/android.jar
+libs/libtermux.jar
+build_termux.sh
