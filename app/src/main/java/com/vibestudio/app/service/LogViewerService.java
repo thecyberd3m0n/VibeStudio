@@ -2,6 +2,8 @@ package com.vibestudio.app.service;
 
 import android.util.Log;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ public class LogViewerService {
     private final Deque<String> mLogBuffer = new ArrayDeque<>();
     private int mCurrentSizeBytes = 0;
     private final List<OnLogListener> mListeners = new ArrayList<>();
+    private boolean mIsLogcatCapturing = false;
 
     public interface OnLogListener {
         void onLogAdded(String logEntry);
@@ -35,14 +38,40 @@ public class LogViewerService {
         return sInstance;
     }
 
+    public synchronized void startLogcatCapture() {
+        if (mIsLogcatCapturing) return;
+        mIsLogcatCapturing = true;
+
+        new Thread(() -> {
+            try {
+                int pid = android.os.Process.myPid();
+                Process process = Runtime.getRuntime().exec("logcat -v time --pid=" + pid);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+                String line;
+                while (mIsLogcatCapturing && (line = reader.readLine()) != null) {
+                    final String logLine = line;
+                    synchronized (LogViewerService.this) {
+                        appendEntryToBuffer(logLine);
+                    }
+                }
+            } catch (Throwable t) {
+                Log.e(TAG, "Error capturing logcat stream", t);
+            }
+        }).start();
+    }
+
     public synchronized void log(String level, String tag, String message) {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
         String timestamp = sdf.format(new Date());
         String entry = String.format("[%s] [%s/%s]: %s", timestamp, level, tag, message);
 
         Log.println(getPriority(level), tag, message);
+        appendEntryToBuffer(entry);
+    }
 
-        int entryBytes = entry.getBytes().length + 1; // including newline
+    private void appendEntryToBuffer(String entry) {
+        int entryBytes = entry.getBytes().length + 1;
 
         while (!mLogBuffer.isEmpty() && (mCurrentSizeBytes + entryBytes > MAX_LOG_SIZE_BYTES)) {
             String removed = mLogBuffer.removeFirst();
