@@ -14,7 +14,7 @@
     <application 
         android:name=".VibeApplication"
         android:label="VibeStudio" 
-        android:theme="@android:style/Theme.Black.NoTitleBar"
+        android:theme="@style/AppTheme"
         android:allowBackup="true">
 
         <service 
@@ -43,6 +43,6 @@
             android:label="VibeStudio - Error" 
             android:exported="false"
             android:process=":crash_process"
-            android:theme="@android:style/Theme.Black.NoTitleBar" />
+            android:theme="@style/AppTheme" />
     </application>
 </manifest>
