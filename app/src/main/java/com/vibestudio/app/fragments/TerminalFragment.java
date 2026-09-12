@@ -50,14 +50,14 @@ public class TerminalFragment extends Fragment {
         Context context = getContext();
         if (context == null) return;
 
-        TermuxConfig config = TermuxConfig.Companion.builder()
-                .autoInstall(true)
-                .logLevel(LogLevel.DEBUG)
-                .build();
-        mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
-
         new Thread(() -> {
             try {
+                TermuxConfig config = TermuxConfig.Companion.builder()
+                        .autoInstall(true)
+                        .logLevel(LogLevel.DEBUG)
+                        .build();
+                mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
+
                 File filesDir = context.getFilesDir();
                 File usrDir = new File(filesDir, "libtermux/usr");
                 File binDir = new File(usrDir, "bin");
@@ -103,20 +103,24 @@ public class TerminalFragment extends Fragment {
                         if (result instanceof SessionHandle) {
                             final SessionHandle session = (SessionHandle) result;
                             mHandler.post(() -> {
-                                if (mTerminalView != null) {
-                                    mTerminalView.attachSession(session);
-                                    session.run("bash");
+                                try {
+                                    if (mTerminalView != null) {
+                                        mTerminalView.attachSession(session);
+                                        session.run("bash");
+                                    }
+                                } catch (Throwable t) {
+                                    CrashHandler.getInstance().handleException(TAG, "Error attaching session", t);
                                 }
                             });
                         } else if (result instanceof Throwable) {
-                            Log.e(TAG, "Failed to create session", (Throwable) result);
+                            Throwable t = (Throwable) result;
+                            CrashHandler.getInstance().handleException(TAG, "Failed to create LibTermux session", t);
                         }
                     }
                 });
 
             } catch (Throwable t) {
-                Log.e(TAG, "Error initializing LibTermux session", t);
-                CrashHandler.getInstance().logError(TAG, "LibTermux session error", t);
+                CrashHandler.getInstance().handleException(TAG, "LibTermux initialization failed", t);
             }
         }).start();
     }
