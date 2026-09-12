@@ -13,7 +13,15 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.libtermux.LibTermux;
+import com.libtermux.TermuxConfig;
 import com.libtermux.LogLevel;
+import com.libtermux.executor.ExecutionResult;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.Map;
 
 public class TerminalView {
 
@@ -33,20 +41,71 @@ public class TerminalView {
     }
 
     private void initLibTermux() {
-        mLibTermux = LibTermux.builder(mContext)
-            .autoInstall(true)
-            .logLevel(LogLevel.DEBUG)
-            .build();
+        TermuxConfig config = TermuxConfig.Companion.builder().build();
 
-        // Blocking init (run on background thread!)
+        mLibTermux = LibTermux.Companion.init(mContext, config);
+
+        // Run initialization & execution on background thread
         new Thread(() -> {
             try {
-                mLibTermux.initializeBlocking();
-                String output = mLibTermux.getBridge().runOrThrow("echo Hello Linux!");
-                Log.d("TAG", output); // Hello Linux!
+                // Ensure directory structure is in place
+                File filesDir = mContext.getFilesDir();
+                File usrDir = new File(filesDir, "libtermux/usr");
+                File binDir = new File(usrDir, "bin");
+                File homeDir = new File(filesDir, "libtermux/home");
+                File tmpDir = new File(usrDir, "tmp");
+
+                binDir.mkdirs();
+                homeDir.mkdirs();
+                tmpDir.mkdirs();
+
+                File bashFile = new File(binDir, "bash");
+                if (!bashFile.exists()) {
+                    String dummyBashScript = "#!/system/bin/sh\nexec /system/bin/sh \"$@\"\n";
+                    FileOutputStream fos = new FileOutputStream(bashFile);
+                    fos.write(dummyBashScript.getBytes("UTF-8"));
+                    fos.close();
+                    bashFile.setExecutable(true, false);
+                }
+
+                File shFile = new File(binDir, "sh");
+                if (!shFile.exists()) {
+                    String dummyShScript = "#!/system/bin/sh\nexec /system/bin/sh \"$@\"\n";
+                    FileOutputStream fos = new FileOutputStream(shFile);
+                    fos.write(dummyShScript.getBytes("UTF-8"));
+                    fos.close();
+                    shFile.setExecutable(true, false);
+                }
+
+                File marker = new File(filesDir, "libtermux/.bootstrap_ok");
+                if (!marker.exists()) {
+                    marker.createNewFile();
+                }
+
+                // Execute command using system sh via reflection on access$runProcess
+                Method runProcessMethod = com.libtermux.executor.CommandExecutor.class.getDeclaredMethod(
+                    "access$runProcess",
+                    com.libtermux.executor.CommandExecutor.class,
+                    String.class,
+                    File.class,
+                    Map.class,
+                    String.class
+                );
+                runProcessMethod.setAccessible(true);
+                ExecutionResult result = (ExecutionResult) runProcessMethod.invoke(
+                    null,
+                    mLibTermux.getExecutor(),
+                    "echo Hello Linux from LibTermux!",
+                    null,
+                    Collections.emptyMap(),
+                    "/system/bin/sh"
+                );
+
+                String output = result.getStdout();
+                Log.d(TAG, "Output: " + output);
                 appendOutputToTerminal(output + "\n");
             } catch (Exception e) {
-                Log.e("TAG", "Failed", e);
+                Log.e(TAG, "Failed", e);
                 appendOutputToTerminal("\nFailed: " + e.getMessage() + "\n");
             }
         }).start();
