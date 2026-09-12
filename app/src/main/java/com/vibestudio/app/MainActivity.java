@@ -1,6 +1,7 @@
 package com.vibestudio.app;
 
 import android.os.Bundle;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import android.view.View;
@@ -34,32 +35,16 @@ public class MainActivity extends FragmentActivity {
     private DrawerLayout mDrawerLayout;
     private View mDrawerContainer;
     private ListView mDrawerList;
-    private FrameLayout mContentFrame;
     private TextView mToolbarTitle;
-
-    private DatabaseHelper mDbHelper;
-    private ModelsView mModelsView;
-    private McpView mMcpView;
-    private TerminalFragment mTerminalFragment;
-    private ChatView mChatView;
-    private PermissionsView mPermissionsView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mDbHelper = new DatabaseHelper(this);
-        mModelsView = new ModelsView(this, mDbHelper);
-        mMcpView = new McpView(this);
-        mTerminalFragment = new TerminalFragment();
-        mChatView = new ChatView(this);
-        mPermissionsView = new PermissionsView(this);
-
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         mDrawerContainer = findViewById(R.id.left_drawer_container);
         mDrawerList = (ListView) findViewById(R.id.left_drawer);
-        mContentFrame = (FrameLayout) findViewById(R.id.content_frame);
         mToolbarTitle = (TextView) findViewById(R.id.toolbar_title);
 
         ArrayAdapter<MenuItem> adapter = new ArrayAdapter<MenuItem>(this, R.layout.drawer_list_item, mMenuItems) {
@@ -110,27 +95,31 @@ public class MainActivity extends FragmentActivity {
         mToolbarTitle.setText(item.title);
         mDrawerList.setItemChecked(position, true);
 
-        mContentFrame.removeAllViews();
-
+        Fragment fragment;
         switch (position) {
             case 0:
-                mContentFrame.addView(mModelsView.buildView());
+                fragment = new ModelsFragment();
                 break;
             case 1:
-                mContentFrame.addView(mMcpView.buildView());
+                fragment = new McpFragment();
                 break;
             case 2:
-                getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.content_frame, mTerminalFragment)
-                    .commit();
+                fragment = new TerminalFragment();
                 break;
             case 3:
-                mContentFrame.addView(mChatView.buildView());
+                fragment = new ChatFragment();
                 break;
             case 4:
-                mContentFrame.addView(mPermissionsView.buildView());
+                fragment = new PermissionsFragment();
+                break;
+            default:
+                fragment = new ModelsFragment();
                 break;
         }
+
+        getSupportFragmentManager().beginTransaction()
+            .replace(R.id.content_frame, fragment)
+            .commit();
 
         mDrawerLayout.closeDrawer(mDrawerContainer);
     }

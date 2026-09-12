@@ -1,0 +1,30 @@
+package com.vibestudio.app;
+
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
+public class ModelsFragment extends Fragment {
+
+    private DatabaseHelper mDbHelper;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getActivity() != null) {
+            mDbHelper = new DatabaseHelper(getActivity());
+        }
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        if (getContext() == null) return null;
+        ModelsView modelsView = new ModelsView(getContext(), mDbHelper);
+        return modelsView.buildView();
+    }
+}
