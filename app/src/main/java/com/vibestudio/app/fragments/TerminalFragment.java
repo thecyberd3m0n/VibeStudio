@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 
 import com.libtermux.LibTermux;
 import com.libtermux.TermuxConfig;
+import com.libtermux.LogLevel;
 import com.libtermux.executor.SessionHandle;
 import com.vibestudio.app.R;
 import com.vibestudio.app.logging.CrashHandler;
@@ -49,7 +50,10 @@ public class TerminalFragment extends Fragment {
         Context context = getContext();
         if (context == null) return;
 
-        TermuxConfig config = TermuxConfig.Companion.builder().build();
+        TermuxConfig config = TermuxConfig.Companion.builder()
+                .autoInstall(true)
+                .logLevel(LogLevel.DEBUG)
+                .build();
         mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
 
         new Thread(() -> {
@@ -98,10 +102,10 @@ public class TerminalFragment extends Fragment {
                     public void resumeWith(@NonNull Object result) {
                         if (result instanceof SessionHandle) {
                             final SessionHandle session = (SessionHandle) result;
-                            session.run("bash");
                             mHandler.post(() -> {
                                 if (mTerminalView != null) {
                                     mTerminalView.attachSession(session);
+                                    session.run("bash");
                                 }
                             });
                         } else if (result instanceof Throwable) {
