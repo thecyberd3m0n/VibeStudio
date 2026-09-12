@@ -1,25 +1,17 @@
-# Build and binary artifacts
-bin/
-obj/
-*.apk
-*.dex
-*.idsig
-
-# Keytool / Keystores
-*.keystore
-*.jks
-
-# IDE / System files
-.navigation/
-captures/
-.externalNativeBuild
-.cxx/
-.idea/
 .gradle/
 build/
-local.properties
-*.iml
+bin/
+obj/
+libtermux_classes/
+app/src/main/java/com/vibestudio/app/R.java
+debug.keystore
+libs/*.jar
+libs/*.aar
+libs/*.zip
+libs/deps/
+build_termux.sh
 
-# OS generated files
-.DS_Store
-Thumbs.db
+# Generated R sources and AAPT2 compilation outputs
+gen_r/
+compiled_res/
+build/extracted_aars/

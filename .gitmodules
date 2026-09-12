@@ -1,0 +1,3 @@
+[submodule "libtermux-android"]
+	path = libtermux-android
+	url = git@github.com:libtermux/libtermux-android.git

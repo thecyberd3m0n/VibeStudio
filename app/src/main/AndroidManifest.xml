@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.vibestudio.app"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk 
+        android:minSdkVersion="24" 
+        android:targetSdkVersion="35" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <application 
+        android:name=".VibeApplication"
+        android:label="VibeStudio" 
+        android:theme="@style/AppTheme"
+        android:allowBackup="true">
+
+        <activity 
+            android:name=".activity.OnboardingActivity" 
+            android:label="VibeStudio" 
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity 
+            android:name=".activity.MainActivity" 
+            android:label="VibeStudio" 
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity 
+            android:name=".activity.CrashActivity" 
+            android:label="VibeStudio - Error" 
+            android:exported="false"
+            android:process=":crash_process"
+            android:theme="@style/AppTheme" />
+    </application>
+</manifest>
