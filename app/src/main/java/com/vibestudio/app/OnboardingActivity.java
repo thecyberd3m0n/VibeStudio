@@ -11,6 +11,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.vibestudio.app.logging.CrashHandler;
+
 import java.io.File;
 import java.io.FileOutputStream;
 
@@ -45,63 +47,68 @@ public class OnboardingActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mDbHelper = new DatabaseHelper(this);
+        try {
+            mDbHelper = new DatabaseHelper(this);
 
-        if (mDbHelper.isEnvInitialized()) {
-            navigateToMain();
-            return;
+            if (mDbHelper.isEnvInitialized()) {
+                navigateToMain();
+                return;
+            }
+
+            setContentView(R.layout.activity_onboarding);
+
+            mHandler = new Handler(Looper.getMainLooper());
+
+            mStep1Layout = findViewById(R.id.step1_layout);
+            mStep2Layout = findViewById(R.id.step2_layout);
+            mStep3Layout = findViewById(R.id.step3_layout);
+
+            mStep1Indicator = (TextView) findViewById(R.id.step1_indicator);
+            mStep2Indicator = (TextView) findViewById(R.id.step2_indicator);
+            mStep3Indicator = (TextView) findViewById(R.id.step3_indicator);
+
+            mStep1Title = (TextView) findViewById(R.id.step1_title);
+            mStep2Title = (TextView) findViewById(R.id.step2_title);
+            mStep3Title = (TextView) findViewById(R.id.step3_title);
+
+            mStatusMessage = (TextView) findViewById(R.id.status_message);
+            mInstallLogText = (TextView) findViewById(R.id.install_log_text);
+
+            mBtnBack = (Button) findViewById(R.id.btn_back);
+            mBtnNext = (Button) findViewById(R.id.btn_next);
+
+            updateStepUi();
+
+            mBtnNext.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mCurrentStep < 3) {
+                        mCurrentStep++;
+                        updateStepUi();
+                        if (mCurrentStep == 3 && !mIsInstalled && !mIsInstalling) {
+                            startEnvironmentInstallation();
+                        }
+                    } else {
+                        if (mIsInstalled) {
+                            navigateToMain();
+                        }
+                    }
+                }
+            });
+
+            mBtnBack.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mCurrentStep > 1 && !mIsInstalling) {
+                        mCurrentStep--;
+                        updateStepUi();
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            CrashHandler.getInstance().logError("OnboardingActivity", "Error in onCreate", t);
+            throw t;
         }
-
-        setContentView(R.layout.activity_onboarding);
-
-        mHandler = new Handler(Looper.getMainLooper());
-
-        mStep1Layout = findViewById(R.id.step1_layout);
-        mStep2Layout = findViewById(R.id.step2_layout);
-        mStep3Layout = findViewById(R.id.step3_layout);
-
-        mStep1Indicator = (TextView) findViewById(R.id.step1_indicator);
-        mStep2Indicator = (TextView) findViewById(R.id.step2_indicator);
-        mStep3Indicator = (TextView) findViewById(R.id.step3_indicator);
-
-        mStep1Title = (TextView) findViewById(R.id.step1_title);
-        mStep2Title = (TextView) findViewById(R.id.step2_title);
-        mStep3Title = (TextView) findViewById(R.id.step3_title);
-
-        mStatusMessage = (TextView) findViewById(R.id.status_message);
-        mInstallLogText = (TextView) findViewById(R.id.install_log_text);
-
-        mBtnBack = (Button) findViewById(R.id.btn_back);
-        mBtnNext = (Button) findViewById(R.id.btn_next);
-
-        updateStepUi();
-
-        mBtnNext.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mCurrentStep < 3) {
-                    mCurrentStep++;
-                    updateStepUi();
-                    if (mCurrentStep == 3 && !mIsInstalled && !mIsInstalling) {
-                        startEnvironmentInstallation();
-                    }
-                } else {
-                    if (mIsInstalled) {
-                        navigateToMain();
-                    }
-                }
-            }
-        });
-
-        mBtnBack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mCurrentStep > 1 && !mIsInstalling) {
-                    mCurrentStep--;
-                    updateStepUi();
-                }
-            }
-        });
     }
 
     private void updateStepUi() {
@@ -221,6 +228,7 @@ public class OnboardingActivity extends Activity {
 
                 } catch (Exception e) {
                     final String err = e.getMessage();
+                    CrashHandler.getInstance().logError("OnboardingActivity", "Error during environment installation", e);
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {

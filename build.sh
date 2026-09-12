@@ -58,7 +58,7 @@ aapt2 link -o bin/app.unsigned.apk   -I libs/android.jar   --manifest app/src/ma
 APP_CLASSPATH="$CLASSPATH:libs/libtermux.jar"
 
 echo "=== Compiling VibeStudio Java sources ==="
-javac -source 1.8 -target 1.8 -d obj   -classpath "$APP_CLASSPATH"   app/src/main/java/com/vibestudio/app/*.java
+javac -source 1.8 -target 1.8 -d obj   -classpath "$APP_CLASSPATH"   $(find app/src/main/java -name "*.java")
 
 # 7. Converting bytecode to DEX (d8)
 echo "=== Converting bytecode to DEX (d8) ==="

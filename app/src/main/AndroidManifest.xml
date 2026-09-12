@@ -8,7 +8,11 @@
         android:minSdkVersion="24" 
         android:targetSdkVersion="35" />
 
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
     <application 
+        android:name=".VibeApplication"
         android:label="VibeStudio" 
         android:theme="@android:style/Theme.Black.NoTitleBar"
         android:allowBackup="true">
@@ -33,5 +37,12 @@
             android:label="VibeStudio" 
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity 
+            android:name=".CrashActivity" 
+            android:label="VibeStudio - Error" 
+            android:exported="false"
+            android:process=":crash_process"
+            android:theme="@android:style/Theme.Black.NoTitleBar" />
     </application>
 </manifest>
