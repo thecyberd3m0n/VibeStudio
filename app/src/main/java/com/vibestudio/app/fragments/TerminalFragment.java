@@ -4,7 +4,6 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,11 +15,22 @@ import androidx.fragment.app.Fragment;
 import com.libtermux.LibTermux;
 import com.libtermux.TermuxConfig;
 import com.libtermux.LogLevel;
+import com.libtermux.executor.Session;
+import com.libtermux.executor.SessionEvent;
+import com.libtermux.executor.SessionHandle;
 import com.vibestudio.app.R;
 import com.vibestudio.app.logging.CrashHandler;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.util.UUID;
+
+import kotlinx.coroutines.channels.BufferOverflow;
+import kotlinx.coroutines.CoroutineScope;
+import kotlinx.coroutines.CoroutineScopeKt;
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.SupervisorKt;
+import kotlinx.coroutines.flow.MutableSharedFlow;
+import kotlinx.coroutines.flow.SharedFlowKt;
 
 public class TerminalFragment extends Fragment {
 
@@ -28,6 +38,7 @@ public class TerminalFragment extends Fragment {
 
     private com.libtermux.view.TerminalView mTerminalView;
     private LibTermux mLibTermux;
+    private SessionHandle mSessionHandle;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     @Nullable
@@ -63,22 +74,14 @@ public class TerminalFragment extends Fragment {
                 homeDir.mkdirs();
                 tmpDir.mkdirs();
 
+                // Clean up stale non-executable dummy script files from binDir if present
                 File bashFile = new File(binDir, "bash");
-                if (!bashFile.exists()) {
-                    String dummyBashScript = "#!/system/bin/sh\nexec /system/bin/sh \"$@\"\n";
-                    FileOutputStream fos = new FileOutputStream(bashFile);
-                    fos.write(dummyBashScript.getBytes("UTF-8"));
-                    fos.close();
-                    bashFile.setExecutable(true, false);
+                if (bashFile.exists()) {
+                    bashFile.delete();
                 }
-
                 File shFile = new File(binDir, "sh");
-                if (!shFile.exists()) {
-                    String dummyShScript = "#!/system/bin/sh\nexec /system/bin/sh \"$@\"\n";
-                    FileOutputStream fos = new FileOutputStream(shFile);
-                    fos.write(dummyShScript.getBytes("UTF-8"));
-                    fos.close();
-                    shFile.setExecutable(true, false);
+                if (shFile.exists()) {
+                    shFile.delete();
                 }
 
                 File marker = new File(filesDir, "libtermux/.bootstrap_ok");
@@ -86,8 +89,15 @@ public class TerminalFragment extends Fragment {
                     marker.createNewFile();
                 }
 
+                Session session = new Session(UUID.randomUUID().toString(), "main", System.currentTimeMillis(), true);
+                MutableSharedFlow<SessionEvent> events = SharedFlowKt.MutableSharedFlow(0, 64, BufferOverflow.DROP_OLDEST);
+                CoroutineScope scope = CoroutineScopeKt.CoroutineScope(Dispatchers.getMain().plus(SupervisorKt.SupervisorJob(null)));
+
+                mSessionHandle = new SessionHandle(session, scope, mLibTermux.getExecutor(), events);
+
                 mHandler.post(() -> {
                     if (mTerminalView != null) {
+                        mTerminalView.attachSession(mSessionHandle);
                         mTerminalView.appendText("LibTermux environment initialized\n", false);
                     }
                 });
@@ -96,6 +106,14 @@ public class TerminalFragment extends Fragment {
                 CrashHandler.getInstance().handleException(TAG, "LibTermux initialization failed", t);
             }
         }).start();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (mTerminalView != null) {
+            mTerminalView.detach();
+        }
     }
 
     public com.libtermux.view.TerminalView getTerminalView() {

@@ -74,6 +74,11 @@
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-coroutines-android</artifactId>
+            <version>1.9.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-serialization-json-jvm</artifactId>
             <version>1.6.3</version>
         </dependency>
