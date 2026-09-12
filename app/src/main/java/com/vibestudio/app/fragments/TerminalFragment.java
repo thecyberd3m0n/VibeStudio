@@ -98,6 +98,7 @@ public class TerminalFragment extends Fragment {
                     public void resumeWith(@NonNull Object result) {
                         if (result instanceof SessionHandle) {
                             final SessionHandle session = (SessionHandle) result;
+                            session.run("bash");
                             mHandler.post(() -> {
                                 if (mTerminalView != null) {
                                     mTerminalView.attachSession(session);
