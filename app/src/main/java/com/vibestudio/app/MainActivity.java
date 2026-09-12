@@ -1,7 +1,7 @@
 package com.vibestudio.app;
 
-import android.app.Activity;
 import android.os.Bundle;
+import androidx.fragment.app.FragmentActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +11,7 @@ import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
-public class MainActivity extends Activity {
+public class MainActivity extends FragmentActivity {
 
     private static class MenuItem {
         String title;
@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
     private DatabaseHelper mDbHelper;
     private ModelsView mModelsView;
     private McpView mMcpView;
-    private TerminalView mTerminalView;
+    private TerminalFragment mTerminalFragment;
     private ChatView mChatView;
     private PermissionsView mPermissionsView;
 
@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
         mDbHelper = new DatabaseHelper(this);
         mModelsView = new ModelsView(this, mDbHelper);
         mMcpView = new McpView(this);
-        mTerminalView = new TerminalView(this);
+        mTerminalFragment = new TerminalFragment();
         mChatView = new ChatView(this);
         mPermissionsView = new PermissionsView(this);
 
@@ -120,7 +120,9 @@ public class MainActivity extends Activity {
                 mContentFrame.addView(mMcpView.buildView());
                 break;
             case 2:
-                mContentFrame.addView(mTerminalView.buildView());
+                getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.content_frame, mTerminalFragment)
+                    .commit();
                 break;
             case 3:
                 mContentFrame.addView(mChatView.buildView());

@@ -75,10 +75,12 @@ mkdir -p bin obj compiled_res gen_r
 # Compile app res
 aapt2 compile --dir app/src/main/res -o compiled_res/
 
-# Compile ONLY drawerlayout AAR resources to ensure androidx.drawerlayout.R$attr is generated
-if [ -d "build/extracted_aars/drawerlayout-1.2.0/res" ]; then
-    aapt2 compile --dir "build/extracted_aars/drawerlayout-1.2.0/res" -o compiled_res/
-fi
+# Compile selected AAR resources safely
+for aar_name in drawerlayout-1.2.0 lifecycle-runtime-2.3.1 fragment-1.3.6 activity-1.2.4; do
+    if [ -d "build/extracted_aars/${aar_name}/res" ]; then
+        aapt2 compile --dir "build/extracted_aars/${aar_name}/res" -o compiled_res/ 2>/dev/null || true
+    fi
+done
 
 # Remove existing stale app R.java if present in app/src/main/java
 rm -f app/src/main/java/com/vibestudio/app/R.java
