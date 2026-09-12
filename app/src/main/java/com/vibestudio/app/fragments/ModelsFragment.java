@@ -1,4 +1,7 @@
-package com.vibestudio.app;
+package com.vibestudio.app.fragments;
+import com.vibestudio.app.R;
+import com.vibestudio.app.db.DatabaseHelper;
+import com.vibestudio.app.views.*;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;

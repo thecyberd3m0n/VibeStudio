@@ -1,4 +1,5 @@
-package com.vibestudio.app;
+package com.vibestudio.app.views;
+import com.vibestudio.app.db.DatabaseHelper;
 
 import android.app.AlertDialog;
 import android.content.Context;

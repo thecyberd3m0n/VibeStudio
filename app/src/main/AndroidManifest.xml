@@ -19,7 +19,7 @@
         android:allowBackup="true">
 
         <activity 
-            android:name=".OnboardingActivity" 
+            android:name=".activity.OnboardingActivity" 
             android:label="VibeStudio" 
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
@@ -30,13 +30,13 @@
         </activity>
 
         <activity 
-            android:name=".MainActivity" 
+            android:name=".activity.MainActivity" 
             android:label="VibeStudio" 
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity 
-            android:name=".CrashActivity" 
+            android:name=".activity.CrashActivity" 
             android:label="VibeStudio - Error" 
             android:exported="false"
             android:process=":crash_process"

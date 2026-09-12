@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.os.Environment;
 import android.util.Log;
 
-import com.vibestudio.app.CrashActivity;
+import com.vibestudio.app.activity.CrashActivity;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -52,14 +52,22 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         writeLogToFile("ERROR", tag, message, throwable);
     }
 
+    public void handleException(String tag, String message, Throwable throwable) {
+        Log.e(tag, message, throwable);
+        String logText = saveCrashLog(Thread.currentThread(), throwable);
+        launchCrashActivity(logText);
+    }
+
     private String saveCrashLog(Thread thread, Throwable throwable) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
-        throwable.printStackTrace(pw);
+        if (throwable != null) {
+            throwable.printStackTrace(pw);
+        }
         String stackTrace = sw.toString();
 
         String fullLog = "Thread: " + thread.getName() + " (ID: " + thread.getId() + ")\n" +
-                         "Exception: " + throwable.toString() + "\n\n" +
+                         "Exception: " + (throwable != null ? throwable.toString() : "Unknown") + "\n\n" +
                          "Stack Trace:\n" + stackTrace;
 
         writeLogToFile("CRASH", "UncaughtException", fullLog, null);
