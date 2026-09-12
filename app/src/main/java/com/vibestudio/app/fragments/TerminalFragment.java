@@ -16,16 +16,11 @@ import androidx.fragment.app.Fragment;
 import com.libtermux.LibTermux;
 import com.libtermux.TermuxConfig;
 import com.libtermux.LogLevel;
-import com.libtermux.executor.SessionHandle;
 import com.vibestudio.app.R;
 import com.vibestudio.app.logging.CrashHandler;
 
 import java.io.File;
 import java.io.FileOutputStream;
-
-import kotlin.coroutines.Continuation;
-import kotlin.coroutines.CoroutineContext;
-import kotlin.coroutines.EmptyCoroutineContext;
 
 public class TerminalFragment extends Fragment {
 
@@ -91,31 +86,9 @@ public class TerminalFragment extends Fragment {
                     marker.createNewFile();
                 }
 
-                mLibTermux.getSessions().createSession("main", new Continuation<SessionHandle>() {
-                    @NonNull
-                    @Override
-                    public CoroutineContext getContext() {
-                        return EmptyCoroutineContext.INSTANCE;
-                    }
-
-                    @Override
-                    public void resumeWith(@NonNull Object result) {
-                        if (result instanceof SessionHandle) {
-                            final SessionHandle session = (SessionHandle) result;
-                            mHandler.post(() -> {
-                                try {
-                                    if (mTerminalView != null) {
-                                        mTerminalView.attachSession(session);
-                                        session.run("bash");
-                                    }
-                                } catch (Throwable t) {
-                                    CrashHandler.getInstance().handleException(TAG, "Error attaching session", t);
-                                }
-                            });
-                        } else if (result instanceof Throwable) {
-                            Throwable t = (Throwable) result;
-                            CrashHandler.getInstance().handleException(TAG, "Failed to create LibTermux session", t);
-                        }
+                mHandler.post(() -> {
+                    if (mTerminalView != null) {
+                        mTerminalView.appendText("LibTermux environment initialized\n", false);
                     }
                 });
 

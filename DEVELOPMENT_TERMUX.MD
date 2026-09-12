@@ -45,3 +45,9 @@ When Android Package Installer throws generic errors like *"Pakiet wygląda na n
   APK is missing v1/v2 signatures. Ensure `apksigner` is run on the aligned APK with `debug.keystore`.
 - **`INSTALL_FAILED_UPDATE_INCOMPATIBLE`**:
   An app with the same package name (`com.vibestudio.app`) was installed using a different signing key. Uninstall the previous app first.
+
+---
+
+## 3. Submodule & Architecture Rules
+
+- **Do NOT modify submodules directly** (e.g., `libtermux-android`). All fixes, keyboard event translations, view wrappings, or custom behaviors MUST be implemented inside app workspace code (`app/src/...`), using custom subclasses, view wrappers, or delegating event listeners, without modifying external submodule libraries.
