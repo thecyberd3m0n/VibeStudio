@@ -5,9 +5,10 @@ obj/
 libtermux_classes/
 app/src/main/java/com/vibestudio/app/R.java
 debug.keystore
+libs/*.jar
+libs/*.aar
+libs/*.zip
 libs/deps/
-libs/android.jar
-libs/libtermux.jar
 build_termux.sh
 
 # Generated R sources and AAPT2 compilation outputs
