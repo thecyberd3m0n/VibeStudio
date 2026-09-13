@@ -124,6 +124,11 @@ public class LogViewerService {
         log("WARN", tag, message);
     }
 
+    public synchronized void w(String tag, String message, Throwable t) {
+        String msg = message + (t != null ? "\n" + Log.getStackTraceString(t) : "");
+        log("WARN", tag, msg);
+    }
+
     public synchronized void e(String tag, String message) {
         log("ERROR", tag, message);
     }
