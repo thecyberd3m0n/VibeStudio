@@ -56,8 +56,7 @@ public class TerminalFragment extends Fragment {
         return view;
     }
 
-
-        private void overrideSTermuxPaths(File usrDir, File homeDir) {
+    private void overrideSTermuxPaths(File usrDir, File homeDir) {
         if (usrDir == null || !usrDir.exists() || !usrDir.isDirectory()) return;
 
         String targetUsrPrefix = usrDir.getAbsolutePath();
@@ -68,6 +67,125 @@ public class TerminalFragment extends Fragment {
 
         int count = processDirectoryForTermuxPaths(usrDir, targetUsrPrefix, defaultTermuxUsr, targetHomePrefix, defaultTermuxHome, 0);
         LogViewerService.getInstance().i(TAG, "overrideSTermuxPaths completed. Overrode hardcoded termux paths in " + count + " files.");
+
+        setupAptEnvironment(usrDir);
+    }
+
+    private void setupAptEnvironment(File usrDir) {
+        try {
+            File dpkgDir = new File(usrDir, "var/lib/dpkg");
+            if (!dpkgDir.exists()) dpkgDir.mkdirs();
+
+            new File(dpkgDir, "updates").mkdirs();
+            new File(dpkgDir, "info").mkdirs();
+            new File(dpkgDir, "triggers").mkdirs();
+            new File(dpkgDir, "alternatives").mkdirs();
+
+            File statusFile = new File(dpkgDir, "status");
+            if (!statusFile.exists()) {
+                statusFile.createNewFile();
+            }
+
+            File availableFile = new File(dpkgDir, "available");
+            if (!availableFile.exists()) {
+                availableFile.createNewFile();
+            }
+
+            File aptListsDir = new File(usrDir, "var/lib/apt/lists/partial");
+            if (!aptListsDir.exists()) aptListsDir.mkdirs();
+
+            File aptArchivesDir = new File(usrDir, "var/cache/apt/archives/partial");
+            if (!aptArchivesDir.exists()) aptArchivesDir.mkdirs();
+
+            File aptLogDir = new File(usrDir, "var/log/apt");
+            if (!aptLogDir.exists()) aptLogDir.mkdirs();
+
+            File aptEtcDir = new File(usrDir, "etc/apt");
+            if (!aptEtcDir.exists()) aptEtcDir.mkdirs();
+
+            new File(aptEtcDir, "apt.conf.d").mkdirs();
+            new File(aptEtcDir, "preferences.d").mkdirs();
+            new File(aptEtcDir, "sources.list.d").mkdirs();
+            new File(aptEtcDir, "trusted.gpg.d").mkdirs();
+
+            File aptConfFile = new File(aptEtcDir, "apt.conf");
+            String aptConfContent = "Dir \"" + usrDir.getAbsolutePath() + "\";\n" +
+                    "Dir::State \"" + new File(usrDir, "var/lib/apt").getAbsolutePath() + "\";\n" +
+                    "Dir::State::status \"" + statusFile.getAbsolutePath() + "\";\n" +
+                    "Dir::Cache \"" + new File(usrDir, "var/cache/apt").getAbsolutePath() + "\";\n" +
+                    "Dir::Etc \"" + aptEtcDir.getAbsolutePath() + "\";\n" +
+                    "Dir::Log \"" + aptLogDir.getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::methods \"" + new File(usrDir, "lib/apt/methods").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::solvers \"" + new File(usrDir, "lib/apt/solvers").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::solvers:: \"" + new File(usrDir, "lib/apt/solvers").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::planners \"" + new File(usrDir, "lib/apt/planners").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::planners:: \"" + new File(usrDir, "lib/apt/planners").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::dpkg \"" + new File(usrDir, "bin/dpkg").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::gzip \"" + new File(usrDir, "bin/gzip").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::bzip2 \"" + new File(usrDir, "bin/bzip2").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::xz \"" + new File(usrDir, "bin/xz").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::lz4 \"" + new File(usrDir, "bin/lz4").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::zstd \"" + new File(usrDir, "bin/zstd").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::lzma \"" + new File(usrDir, "bin/xz").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::apt-key \"" + new File(usrDir, "bin/apt-key").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::gpg \"" + new File(usrDir, "bin/gpg").getAbsolutePath() + "\";\n" +
+                    "Dir::Bin::gpgv \"" + new File(usrDir, "bin/gpgv").getAbsolutePath() + "\";\n" +
+                    "APT::System \"Debian dpkg interface\";\n" +
+                    "APT::Get::AllowUnauthenticated \"true\";\n" +
+                    "Acquire::AllowInsecureRepositories \"true\";\n" +
+                    "Acquire::AllowDowngradeToInsecureRepositories \"true\";\n" +
+                    "Acquire::https::Verify-Peer \"false\";\n" +
+                    "Acquire::ssl::Verify-Peer \"false\";\n";
+
+            java.nio.file.Files.write(aptConfFile.toPath(), aptConfContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            LogViewerService.getInstance().i(TAG, "Configured apt.conf at " + aptConfFile.getAbsolutePath());
+
+            fixSourcesListFiles(usrDir);
+        } catch (Exception e) {
+            LogViewerService.getInstance().w(TAG, "Failed to setup APT environment", e);
+        }
+    }
+
+    private void fixSourcesListFiles(File usrDir) {
+        try {
+            File aptEtcDir = new File(usrDir, "etc/apt");
+            java.util.List<File> sourcesFiles = new java.util.ArrayList<>();
+            File mainSources = new File(aptEtcDir, "sources.list");
+            if (mainSources.exists()) sourcesFiles.add(mainSources);
+
+            File sourcesListDir = new File(aptEtcDir, "sources.list.d");
+            if (sourcesListDir.exists() && sourcesListDir.isDirectory()) {
+                File[] listFiles = sourcesListDir.listFiles();
+                if (listFiles != null) {
+                    for (File f : listFiles) {
+                        if (f.isFile() && f.getName().endsWith(".list")) {
+                            sourcesFiles.add(f);
+                        }
+                    }
+                }
+            }
+
+            for (File f : sourcesFiles) {
+                String content = new String(java.nio.file.Files.readAllBytes(f.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                String[] lines = content.split("\n");
+                StringBuilder sb = new StringBuilder();
+                boolean modified = false;
+                for (String line : lines) {
+                    String trimmed = line.trim();
+                    if (trimmed.startsWith("deb ") && !trimmed.contains("[trusted=yes]")) {
+                        line = line.replaceFirst("deb\\s+", "deb [trusted=yes] ");
+                        modified = true;
+                    }
+                    sb.append(line).append("\n");
+                }
+                if (modified) {
+                    java.nio.file.Files.write(f.toPath(), sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    LogViewerService.getInstance().i(TAG, "Updated sources file with trusted=yes: " + f.getName());
+                }
+            }
+        } catch (Exception e) {
+            LogViewerService.getInstance().w(TAG, "Failed to fix sources list files", e);
+        }
     }
 
     private int processDirectoryForTermuxPaths(File dir, String targetUsr, String defaultUsr, String targetHome, String defaultHome, int depth) {
@@ -79,9 +197,27 @@ public class TerminalFragment extends Fragment {
         for (File file : files) {
             try {
                 if (java.nio.file.Files.isSymbolicLink(file.toPath())) {
+                    java.nio.file.Path targetPath = java.nio.file.Files.readSymbolicLink(file.toPath());
+                    String targetStr = targetPath.toString();
+                    boolean modified = false;
+                    if (targetStr.contains(defaultUsr)) {
+                        targetStr = targetStr.replace(defaultUsr, targetUsr);
+                        modified = true;
+                    }
+                    if (targetStr.contains(defaultHome)) {
+                        targetStr = targetStr.replace(defaultHome, targetHome);
+                        modified = true;
+                    }
+                    if (modified) {
+                        java.nio.file.Files.delete(file.toPath());
+                        java.nio.file.Files.createSymbolicLink(file.toPath(), java.nio.file.Paths.get(targetStr));
+                        count++;
+                    }
                     continue;
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                LogViewerService.getInstance().w(TAG, "Failed to update symlink for " + file.getName(), e);
+                continue;
             }
 
             if (file.isDirectory()) {
@@ -142,14 +278,21 @@ public class TerminalFragment extends Fragment {
 
         new Thread(() -> {
             try {
+                File filesDir = context.getFilesDir();
+                File usrDir = new File(filesDir, "libtermux/usr");
+                setupAptEnvironment(usrDir);
+                File aptConfFile = new File(usrDir, "etc/apt/apt.conf");
+
                 TermuxConfig config = TermuxConfig.Companion.builder()
                         .autoInstall(true)
                         .logLevel(LogLevel.DEBUG)
+                        .addEnv("TERMUX_APP_PACKAGE_MANAGER", "apt")
+                        .addEnv("TERMUX_MAIN_PACKAGE_FORMAT", "debian")
+                        .addEnv("TERMUX_PKG_NO_MIRROR_SELECT", "1")
+                        .addEnv("APT_CONFIG", aptConfFile.getAbsolutePath())
                         .build();
                 mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
 
-                File filesDir = context.getFilesDir();
-                File usrDir = new File(filesDir, "libtermux/usr");
                 File usrBin = new File(usrDir, "bin");
 
                 File bashFile = new File(usrBin, "bash");
