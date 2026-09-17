@@ -236,6 +236,7 @@
 
             <!-- Log Terminal Output View -->
             <ScrollView
+                android:id="@+id/install_log_scroll"
                 android:layout_width="-1px"
                 android:layout_height="140dp"
                 android:background="#0A0A0A"

@@ -52,6 +52,7 @@ public class OnboardingActivity extends Activity {
 
     private TextView mStatusMessage;
     private TextView mInstallLogText;
+    private android.widget.ScrollView mInstallLogScroll;
 
     private Button mBtnBack;
     private Button mBtnNext;
@@ -67,8 +68,14 @@ public class OnboardingActivity extends Activity {
             mDbHelper = new DatabaseHelper(this);
 
             if (mDbHelper.isEnvInitialized()) {
-                navigateToMain();
-                return;
+                String storedPrefix = mDbHelper.getSetting("env_prefix");
+                File expectedUsrDir = new File(getFilesDir(), "libtermux/usr");
+                if (storedPrefix != null && new File(storedPrefix).getAbsolutePath().equals(expectedUsrDir.getAbsolutePath())) {
+                    navigateToMain();
+                    return;
+                }
+                // Invalid or legacy path (e.g., files/usr), invalidate readiness flag so onboarding completes migration
+                mDbHelper.setEnvInitialized(false);
             }
 
             setContentView(R.layout.activity_onboarding);
@@ -89,6 +96,7 @@ public class OnboardingActivity extends Activity {
 
             mStatusMessage = (TextView) findViewById(R.id.status_message);
             mInstallLogText = (TextView) findViewById(R.id.install_log_text);
+            mInstallLogScroll = (android.widget.ScrollView) findViewById(R.id.install_log_scroll);
 
             mBtnBack = (Button) findViewById(R.id.btn_back);
             mBtnNext = (Button) findViewById(R.id.btn_next);
@@ -176,6 +184,14 @@ public class OnboardingActivity extends Activity {
             @Override
             public void run() {
                 mInstallLogText.append(text + "\n");
+                if (mInstallLogScroll != null) {
+                    mInstallLogScroll.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mInstallLogScroll.fullScroll(View.FOCUS_DOWN);
+                        }
+                    });
+                }
             }
         });
     }
