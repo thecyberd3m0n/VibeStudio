@@ -265,6 +265,7 @@ public class OnboardingActivity extends Activity {
                                 } else if (state instanceof InstallState.Failed) {
                                     InstallState.Failed f = (InstallState.Failed) state;
                                     appendLog("[error] Bootstrap installation failed: " + f.getError());
+                                    throw new RuntimeException("Bootstrap installation failed: " + f.getError());
                                 }
                                 return kotlin.Unit.INSTANCE;
                             }
