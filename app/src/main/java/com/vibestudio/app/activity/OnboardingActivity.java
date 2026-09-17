@@ -398,6 +398,7 @@ public class OnboardingActivity extends Activity {
             fixSourcesListFiles(usrDir);
         } catch (Exception e) {
             LogViewerService.getInstance().w(TAG, "Failed to setup APT environment", e);
+            throw new RuntimeException("Failed to setup APT environment", e);
         }
     }
 
