@@ -75,7 +75,7 @@ public class TerminalFragment extends Fragment {
             File aptConfFile = new File(usrDir, "etc/apt/apt.conf");
 
             TermuxConfig config = TermuxConfig.Companion.builder()
-                    .autoInstall(true)
+                    .autoInstall(false)
                     .logLevel(LogLevel.DEBUG)
                     .addEnv("TERMUX_APP_PACKAGE_MANAGER", "apt")
                     .addEnv("TERMUX_MAIN_PACKAGE_FORMAT", "debian")
