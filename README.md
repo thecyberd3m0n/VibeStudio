@@ -1,6 +1,6 @@
-# VibeStudio
+# VibeStudio IDE
 
-**VibeStudio** is a native Android application designed to provide a lightweight, self-contained AI-driven development environment directly on mobile devices.
+**VibeStudio IDE** is a native Android application designed to provide a lightweight, self-contained AI-driven development environment directly on mobile devices.
 
 ---
 
