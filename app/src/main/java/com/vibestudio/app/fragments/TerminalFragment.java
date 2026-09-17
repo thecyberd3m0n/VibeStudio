@@ -51,7 +51,10 @@ public class TerminalFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_terminal, container, false);
         mTerminalView = view.findViewById(R.id.terminal_view);
 
-        initLibTermuxSession();
+        new Thread(() -> {
+            prepare();
+            startSession();
+        }).start();
 
         return view;
     }
@@ -270,93 +273,115 @@ public class TerminalFragment extends Fragment {
         return count;
     }
 
-    private void initLibTermuxSession() {
+    private boolean mIsPrepared = false;
+
+    public void prepare() {
+        if (mIsPrepared) {
+            LogViewerService.getInstance().i(TAG, "Terminal environment already prepared");
+            return;
+        }
+
         Context context = getContext();
         if (context == null) return;
 
-        LogViewerService.getInstance().i(TAG, "Initializing LibTermux session...");
+        LogViewerService.getInstance().i(TAG, "Preparing LibTermux environment...");
+
+        try {
+            File filesDir = context.getFilesDir();
+            File usrDir = new File(filesDir, "libtermux/usr");
+            setupAptEnvironment(usrDir);
+            File aptConfFile = new File(usrDir, "etc/apt/apt.conf");
+
+            TermuxConfig config = TermuxConfig.Companion.builder()
+                    .autoInstall(true)
+                    .logLevel(LogLevel.DEBUG)
+                    .addEnv("TERMUX_APP_PACKAGE_MANAGER", "apt")
+                    .addEnv("TERMUX_MAIN_PACKAGE_FORMAT", "debian")
+                    .addEnv("TERMUX_PKG_NO_MIRROR_SELECT", "1")
+                    .addEnv("APT_CONFIG", aptConfFile.getAbsolutePath())
+                    .build();
+            mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
+
+            File usrBin = new File(usrDir, "bin");
+            File bashFile = new File(usrBin, "bash");
+            File pkgFile = new File(usrBin, "pkg");
+
+            boolean isInstalled = mLibTermux.isInstalled();
+            boolean binariesExist = usrBin.exists() && bashFile.exists() && pkgFile.exists();
+
+            LogViewerService.getInstance().i(TAG, "LibTermux status - isInstalled: " + isInstalled +
+                    ", binariesExist: " + binariesExist + " (bash: " + bashFile.exists() + ", pkg: " + pkgFile.exists() + ")");
+
+            if (!isInstalled || !binariesExist) {
+                LogViewerService.getInstance().i(TAG, "Triggering bootstrap installation (forceReinstall=" + (!binariesExist) + ")...");
+                mHandler.post(() -> {
+                    if (mTerminalView != null) {
+                        mTerminalView.appendText("Installing Termux bootstrap environment...\n", false);
+                    }
+                });
+
+                boolean forceReinstall = !binariesExist;
+                Flow<InstallState> flow = mLibTermux.install(forceReinstall);
+
+                kotlinx.coroutines.BuildersKt.runBlocking(
+                    Dispatchers.getIO(),
+                    (scope, continuation) -> flow.collect(new FlowCollector<InstallState>() {
+                        @Nullable
+                        @Override
+                        public Object emit(InstallState state, @NonNull kotlin.coroutines.Continuation<? super kotlin.Unit> $completion) {
+                            LogViewerService.getInstance().d(TAG, "InstallState: " + state.getClass().getSimpleName());
+                            mHandler.post(() -> {
+                                if (mTerminalView != null) {
+                                    if (state instanceof InstallState.Downloading) {
+                                        InstallState.Downloading d = (InstallState.Downloading) state;
+                                        int pct = (int) (d.getProgress() * 100);
+                                        mTerminalView.appendText("Downloading bootstrap: " + pct + "%\n", false);
+                                    } else if (state instanceof InstallState.Extracting) {
+                                        InstallState.Extracting e = (InstallState.Extracting) state;
+                                        int pct = (int) (e.getProgress() * 100);
+                                        mTerminalView.appendText("Extracting bootstrap: " + pct + "%\n", false);
+                                    } else if (state instanceof InstallState.Completed) {
+                                        mTerminalView.appendText("Bootstrap installation completed.\n", false);
+                                        LogViewerService.getInstance().i(TAG, "Bootstrap installation completed successfully.");
+                                    } else if (state instanceof InstallState.Failed) {
+                                        InstallState.Failed f = (InstallState.Failed) state;
+                                        mTerminalView.appendText("Bootstrap installation failed: " + f.getError() + "\n", false);
+                                        LogViewerService.getInstance().e(TAG, "Bootstrap installation failed: " + f.getError(), f.getCause());
+                                    }
+                                }
+                            });
+                            return kotlin.Unit.INSTANCE;
+                        }
+                    }, continuation)
+                );
+            }
+
+            File homeDir = new File(filesDir, "libtermux/home");
+            overrideSTermuxPaths(usrDir, homeDir);
+            mIsPrepared = true;
+            LogViewerService.getInstance().i(TAG, "Terminal environment prepare completed.");
+        } catch (Throwable t) {
+            LogViewerService.getInstance().e(TAG, "LibTermux preparation failed", t);
+            CrashHandler.getInstance().handleException(TAG, "LibTermux preparation failed", t);
+        }
+    }
+
+    public void startSession() {
+        Context context = getContext();
+        if (context == null) return;
 
         new Thread(() -> {
             try {
-                File filesDir = context.getFilesDir();
-                File usrDir = new File(filesDir, "libtermux/usr");
-                setupAptEnvironment(usrDir);
-                File aptConfFile = new File(usrDir, "etc/apt/apt.conf");
-
-                TermuxConfig config = TermuxConfig.Companion.builder()
-                        .autoInstall(true)
-                        .logLevel(LogLevel.DEBUG)
-                        .addEnv("TERMUX_APP_PACKAGE_MANAGER", "apt")
-                        .addEnv("TERMUX_MAIN_PACKAGE_FORMAT", "debian")
-                        .addEnv("TERMUX_PKG_NO_MIRROR_SELECT", "1")
-                        .addEnv("APT_CONFIG", aptConfFile.getAbsolutePath())
-                        .build();
-                mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
-
-                File usrBin = new File(usrDir, "bin");
-
-                File bashFile = new File(usrBin, "bash");
-                File pkgFile = new File(usrBin, "pkg");
-
-                boolean isInstalled = mLibTermux.isInstalled();
-                boolean binariesExist = usrBin.exists() && bashFile.exists() && pkgFile.exists();
-
-                LogViewerService.getInstance().i(TAG, "LibTermux status - isInstalled: " + isInstalled +
-                        ", binariesExist: " + binariesExist + " (bash: " + bashFile.exists() + ", pkg: " + pkgFile.exists() + ")");
-
-                if (!isInstalled || !binariesExist) {
-                    LogViewerService.getInstance().i(TAG, "Triggering bootstrap installation (forceReinstall=" + (!binariesExist) + ")...");
-                    mHandler.post(() -> {
-                        if (mTerminalView != null) {
-                            mTerminalView.appendText("Installing Termux bootstrap environment...\n", false);
-                        }
-                    });
-
-                    // Force reinstall if marker exists but binaries are missing
-                    boolean forceReinstall = !binariesExist;
-                    Flow<InstallState> flow = mLibTermux.install(forceReinstall);
-
-                    kotlinx.coroutines.BuildersKt.runBlocking(
-                        Dispatchers.getIO(),
-                        (scope, continuation) -> flow.collect(new FlowCollector<InstallState>() {
-                            @Nullable
-                            @Override
-                            public Object emit(InstallState state, @NonNull kotlin.coroutines.Continuation<? super kotlin.Unit> $completion) {
-                                LogViewerService.getInstance().d(TAG, "InstallState: " + state.getClass().getSimpleName());
-                                mHandler.post(() -> {
-                                    if (mTerminalView != null) {
-                                        if (state instanceof InstallState.Downloading) {
-                                            InstallState.Downloading d = (InstallState.Downloading) state;
-                                            int pct = (int) (d.getProgress() * 100);
-                                            mTerminalView.appendText("Downloading bootstrap: " + pct + "%\n", false);
-                                        } else if (state instanceof InstallState.Extracting) {
-                                            InstallState.Extracting e = (InstallState.Extracting) state;
-                                            int pct = (int) (e.getProgress() * 100);
-                                            mTerminalView.appendText("Extracting bootstrap: " + pct + "%\n", false);
-                                        } else if (state instanceof InstallState.Completed) {
-                                            mTerminalView.appendText("Bootstrap installation completed.\n", false);
-                                            LogViewerService.getInstance().i(TAG, "Bootstrap installation completed successfully.");
-                                        } else if (state instanceof InstallState.Failed) {
-                                            InstallState.Failed f = (InstallState.Failed) state;
-                                            mTerminalView.appendText("Bootstrap installation failed: " + f.getError() + "\n", false);
-                                            LogViewerService.getInstance().e(TAG, "Bootstrap installation failed: " + f.getError(), f.getCause());
-                                        }
-                                    }
-                                });
-                                return kotlin.Unit.INSTANCE;
-                            }
-                        }, continuation)
-                    );
+                if (!mIsPrepared) {
+                    prepare();
                 }
 
-                File homeDir = new File(filesDir, "libtermux/home");
-                overrideSTermuxPaths(usrDir, homeDir);
-
-                Session session = new Session(UUID.randomUUID().toString(), "main", System.currentTimeMillis(), true);
-                MutableSharedFlow<SessionEvent> events = SharedFlowKt.MutableSharedFlow(0, 64, BufferOverflow.DROP_OLDEST);
-                CoroutineScope scope = CoroutineScopeKt.CoroutineScope(Dispatchers.getMain().plus(SupervisorKt.SupervisorJob(null)));
-
-                mSessionHandle = new SessionHandle(session, scope, mLibTermux.getExecutor(), events);
+                if (mSessionHandle == null) {
+                    Session session = new Session(UUID.randomUUID().toString(), "main", System.currentTimeMillis(), true);
+                    MutableSharedFlow<SessionEvent> events = SharedFlowKt.MutableSharedFlow(0, 64, BufferOverflow.DROP_OLDEST);
+                    CoroutineScope scope = CoroutineScopeKt.CoroutineScope(Dispatchers.getMain().plus(SupervisorKt.SupervisorJob(null)));
+                    mSessionHandle = new SessionHandle(session, scope, mLibTermux.getExecutor(), events);
+                }
 
                 mHandler.post(() -> {
                     if (mTerminalView != null) {
@@ -365,10 +390,9 @@ public class TerminalFragment extends Fragment {
                         LogViewerService.getInstance().i(TAG, "Session attached to TerminalView");
                     }
                 });
-
             } catch (Throwable t) {
-                LogViewerService.getInstance().e(TAG, "LibTermux initialization failed", t);
-                CrashHandler.getInstance().handleException(TAG, "LibTermux initialization failed", t);
+                LogViewerService.getInstance().e(TAG, "LibTermux startSession failed", t);
+                CrashHandler.getInstance().handleException(TAG, "LibTermux startSession failed", t);
             }
         }).start();
     }
