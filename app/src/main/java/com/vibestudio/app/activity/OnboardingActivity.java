@@ -357,6 +357,11 @@ public class OnboardingActivity extends Activity {
             File aptLogDir = new File(usrDir, "var/log/apt");
             if (!aptLogDir.exists()) aptLogDir.mkdirs();
 
+            File dpkgEtcDir = new File(usrDir, "etc/dpkg/dpkg.cfg.d");
+            if (!dpkgEtcDir.exists()) dpkgEtcDir.mkdirs();
+            File dpkgCfgFile = new File(usrDir, "etc/dpkg/dpkg.cfg");
+            if (!dpkgCfgFile.exists()) { try { dpkgCfgFile.createNewFile(); } catch (Exception ignored) {} }
+
             File aptEtcDir = new File(usrDir, "etc/apt");
             if (!aptEtcDir.exists()) aptEtcDir.mkdirs();
 
@@ -387,6 +392,7 @@ public class OnboardingActivity extends Activity {
                     "Dir::Bin::apt-key \"" + new File(usrDir, "bin/apt-key").getAbsolutePath() + "\";\n" +
                     "Dir::Bin::gpg \"" + new File(usrDir, "bin/gpg").getAbsolutePath() + "\";\n" +
                     "Dir::Bin::gpgv \"" + new File(usrDir, "bin/gpgv").getAbsolutePath() + "\";\n" +
+                    "DPKG::Options { \"--force-confdef\"; \"--force-confold\"; };\n" +
                     "APT::System \"Debian dpkg interface\";\n" +
                     "APT::Get::AllowUnauthenticated \"true\";\n" +
                     "Acquire::AllowInsecureRepositories \"true\";\n" +
@@ -603,5 +609,29 @@ public class OnboardingActivity extends Activity {
         } catch (Exception e) {
             LogViewerService.getInstance().w(TAG, "Failed to setup default mirrors", e);
         }
+    }
+
+    private boolean replaceBytesInFile(File file, byte[] pattern, byte[] replacement) {
+        if (pattern == null || replacement == null || pattern.length != replacement.length) return false;
+        try {
+            byte[] data = java.nio.file.Files.readAllBytes(file.toPath());
+            boolean modified = false;
+            for (int i = 0; i <= data.length - pattern.length; i++) {
+                boolean match = true;
+                for (int j = 0; j < pattern.length; j++) {
+                    if (data[i + j] != pattern[j]) { match = false; break; }
+                }
+                if (match) {
+                    System.arraycopy(replacement, 0, data, i, replacement.length);
+                    modified = true;
+                    i += pattern.length - 1;
+                }
+            }
+            if (modified) {
+                java.nio.file.Files.write(file.toPath(), data);
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 }

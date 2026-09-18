@@ -1,5 +1,5 @@
 #!/system/bin/sh
-set -x
+set -ex
 
 echo "[vibestudio-bootstrap] Starting environment setup..."
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
@@ -11,6 +11,8 @@ echo "[vibestudio-bootstrap] PREFIX=$PREFIX"
 echo "[vibestudio-bootstrap] HOME=$HOME"
 echo "[vibestudio-bootstrap] PATH=$PATH"
 echo "[vibestudio-bootstrap] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+mkdir -p "$PREFIX/etc/dpkg/dpkg.cfg.d" "$PREFIX/var/lib/dpkg"
 
 # Patch pkg script if it contains hardcoded /data/data/com.termux/files/usr
 if [ -x "$PREFIX/bin/pkg" ]; then
@@ -27,17 +29,18 @@ fi
 if [ -x "$PREFIX/bin/pkg" ]; then
     echo "[vibestudio-bootstrap] Found pkg at $PREFIX/bin/pkg"
     echo "[vibestudio-bootstrap] Running pkg update..."
-    "$PREFIX/bin/pkg" update -y || true
+    "$PREFIX/bin/pkg" update -y
     echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
-    "$PREFIX/bin/pkg" install -y ca-certificates termux-keyring || true
+    "$PREFIX/bin/pkg" install -y ca-certificates termux-keyring
 elif [ -x "$PREFIX/bin/apt-get" ]; then
     echo "[vibestudio-bootstrap] Found apt-get at $PREFIX/bin/apt-get"
     echo "[vibestudio-bootstrap] Running apt-get update..."
-    "$PREFIX/bin/apt-get" update -y || true
+    "$PREFIX/bin/apt-get" update -y
     echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
-    "$PREFIX/bin/apt-get" install -y ca-certificates termux-keyring || true
+    "$PREFIX/bin/apt-get" install -y ca-certificates termux-keyring
 else
     echo "[vibestudio-bootstrap] Warning: Neither pkg nor apt-get found at $PREFIX/bin"
+    exit 1
 fi
 
 echo "[vibestudio-bootstrap] Environment setup completed!"
