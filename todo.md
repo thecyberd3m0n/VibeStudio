@@ -14,3 +14,25 @@
 - [x] Fixed `UnsatisfiedLinkError: libtermux.so not found` by updating `build.sh` to package `lib/arm64-v8a/libtermux.so` into the APK.
 - [x] Verified full build with `./build.sh` generating `bin/VibeStudio.apk` without compilation errors.
 - [x] Preserved required terminal background color (`#1E1E2E`) and left `libtermux-android` submodule unchanged.
+
+## Fixing Plan: Resolve Onboarding Bootstrap & dpkg Missing Symlinks Failure (Without Submodule Modifications)
+
+### Problem Analysis
+Official Termux (`TermuxInstaller.java`) handles bootstrap symlink setup by reading `SYMLINKS.txt` (`oldPath←newPath`) and calling `android.system.Os.symlink(oldPath, newPath)` directly via JNI POSIX bindings.
+When `libtermux-android` attempts to run `Runtime.exec("ln -sf ...")` during bootstrap extraction, `ln` is unavailable in Android's non-root process environment, resulting in missing symlinks (`sh`, `rm`, `tar`, `diff`, `dpkg-deb`, `start-stop-daemon`). As a result, `dpkg` fails during onboarding script execution.
+
+### Action Plan
+1. **Revert Submodule**:
+   - Keep `libtermux-android` submodule pristine and unmodified.
+
+2. **Implement POSIX Symlink & Permissions Fix in VibeStudio (`OnboardingActivity.java`)**:
+   - In `OnboardingActivity.java`, after `libTermux.install()` finishes, parse `SYMLINKS.txt` if present or verify/recreate all missing core symlinks (`sh` -> `dash`/`bash`, `dpkg-deb` -> `dpkg`, `start-stop-daemon` -> `dpkg`, `rm`/`tar`/`diff`/applets -> `busybox`) using `android.system.Os.symlink` and `android.system.Os.remove`.
+   - Perform string replacement on hardcoded Termux paths (`/data/data/com.termux` -> `/data/data/com.absent` or sandboxed `$PREFIX`) in binary/ELF files.
+
+3. **Configure Environment in `vibestudio-bootstrap.sh` & ProcessBuilder**:
+   - Export `PATH="$PREFIX/bin:$PREFIX/bin/applets:/system/bin:/system/xbin:$PATH"` in `vibestudio-bootstrap.sh` and Java `ProcessBuilder`.
+   - Export `DPKG_ADMINDIR="$PREFIX/var/lib/dpkg"` and `TERMUX_PKG_NO_MIRROR_SELECT="true"`.
+   - Ensure pre-creation of `$PREFIX/var/lib/dpkg` state directories and `apt.conf`.
+
+4. **Verification**:
+   - Compile using `./build.sh` and verify APK generation.
