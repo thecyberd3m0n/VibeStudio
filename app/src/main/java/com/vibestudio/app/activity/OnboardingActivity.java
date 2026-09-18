@@ -274,6 +274,7 @@ public class OnboardingActivity extends Activity {
 
                     appendLog("[libtermux] Overriding Termux hardcoded paths...");
                     overrideSTermuxPaths(usrDir, homeDir);
+                    setupSymlinksAndPermissions(usrDir);
                     fixPermissionsRecursively(usrDir);
                     runBootstrapScript(usrDir, homeDir, aptConfFile);
 
@@ -582,6 +583,94 @@ public class OnboardingActivity extends Activity {
         int exitCode = process.waitFor();
         appendLog("[libtermux] vibestudio-bootstrap.sh finished with exit code " + exitCode);
         if (exitCode != 0) { throw new RuntimeException("vibestudio-bootstrap.sh failed with exit code " + exitCode); }
+    }
+
+    private void setupSymlinksAndPermissions(File usrDir) {
+        if (usrDir == null || !usrDir.exists()) return;
+        File symlinksFile = new File(usrDir, "SYMLINKS.txt");
+        if (symlinksFile.exists()) {
+            appendLog("[libtermux] Processing SYMLINKS.txt with POSIX symlink...");
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(symlinksFile))) {
+                String line;
+                int count = 0;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("#")) continue;
+                    String[] parts = line.split("←");
+                    if (parts.length == 2) {
+                        String target = parts[0].trim();
+                        String relPath = parts[1].trim();
+                        if (relPath.startsWith("./")) relPath = relPath.substring(2);
+                        if (target.startsWith("/data/data/com.termux/files/usr/")) {
+                            target = usrDir.getAbsolutePath() + target.substring("/data/data/com.termux/files/usr".length());
+                        }
+                        File linkFile = new File(usrDir, relPath);
+                        File parent = linkFile.getParentFile();
+                        if (parent != null && !parent.exists()) parent.mkdirs();
+                        try { android.system.Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
+                        linkFile.delete();
+                        try {
+                            android.system.Os.symlink(target, linkFile.getAbsolutePath());
+                            count++;
+                        } catch (Throwable t) {
+                            android.util.Log.w("OnboardingActivity", "Failed symlink: " + linkFile + " -> " + target + ": " + t.getMessage());
+                        }
+                    }
+                }
+                appendLog("[libtermux] Created " + count + " symlinks from SYMLINKS.txt");
+            } catch (Throwable t) {
+                appendLog("[warning] Error reading SYMLINKS.txt: " + t.getMessage());
+            }
+        }
+
+        File binDir = new File(usrDir, "bin");
+        if (binDir.exists()) {
+            File busybox = new File(binDir, "busybox");
+            File dpkg = new File(binDir, "dpkg");
+            File dash = new File(binDir, "dash");
+            File bash = new File(binDir, "bash");
+
+            if (dpkg.exists()) {
+                createSymlinkIfNotExists(binDir, "dpkg-deb", "dpkg");
+                createSymlinkIfNotExists(binDir, "start-stop-daemon", "dpkg");
+            }
+
+            File sh = new File(binDir, "sh");
+            if (!sh.exists()) {
+                if (dash.exists()) {
+                    createSymlink(binDir, "sh", "dash");
+                } else if (bash.exists()) {
+                    createSymlink(binDir, "sh", "bash");
+                }
+            }
+
+            if (busybox.exists()) {
+                String[] busyboxApplets = new String[]{
+                    "rm", "tar", "diff", "gzip", "gunzip", "sed", "grep", "cat", "chmod", "mkdir", "cp", "mv", "ln", "echo", "touch", "ls", "find"
+                };
+                for (String applet : busyboxApplets) {
+                    createSymlinkIfNotExists(binDir, applet, "busybox");
+                }
+            }
+        }
+    }
+
+    private void createSymlinkIfNotExists(File dir, String symlinkName, String targetName) {
+        File linkFile = new File(dir, symlinkName);
+        if (!linkFile.exists()) {
+            createSymlink(dir, symlinkName, targetName);
+        }
+    }
+
+    private void createSymlink(File dir, String symlinkName, String target) {
+        File linkFile = new File(dir, symlinkName);
+        try {
+            try { android.system.Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
+            linkFile.delete();
+            android.system.Os.symlink(target, linkFile.getAbsolutePath());
+            android.system.Os.chmod(linkFile.getAbsolutePath(), 0755);
+        } catch (Throwable t) {
+            android.util.Log.w("OnboardingActivity", "Failed to create symlink " + symlinkName + " -> " + target + ": " + t.getMessage());
+        }
     }
 
     private void fixPermissionsRecursively(File file) {
