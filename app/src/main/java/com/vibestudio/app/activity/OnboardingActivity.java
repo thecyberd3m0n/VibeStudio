@@ -587,6 +587,8 @@ public class OnboardingActivity extends Activity {
 
     private void setupSymlinksAndPermissions(File usrDir) {
         if (usrDir == null || !usrDir.exists()) return;
+
+        // 1. Process SYMLINKS.txt if present
         File symlinksFile = new File(usrDir, "SYMLINKS.txt");
         if (symlinksFile.exists()) {
             appendLog("[libtermux] Processing SYMLINKS.txt with POSIX symlink...");
@@ -621,35 +623,87 @@ public class OnboardingActivity extends Activity {
                 appendLog("[warning] Error reading SYMLINKS.txt: " + t.getMessage());
             }
         }
-
         File binDir = new File(usrDir, "bin");
-        if (binDir.exists()) {
-            File busybox = new File(binDir, "busybox");
-            File dpkg = new File(binDir, "dpkg");
-            File dash = new File(binDir, "dash");
-            File bash = new File(binDir, "bash");
+        if (!binDir.exists()) binDir.mkdirs();
 
-            if (dpkg.exists()) {
-                createSymlinkIfNotExists(binDir, "dpkg-deb", "dpkg");
-                createSymlinkIfNotExists(binDir, "start-stop-daemon", "dpkg");
+        File coreutils = new File(binDir, "coreutils");
+        File busybox = new File(binDir, "busybox");
+        File dpkg = new File(binDir, "dpkg");
+        File dash = new File(binDir, "dash");
+        File bash = new File(binDir, "bash");
+
+        // 1. Ensure shell symlink
+        File sh = new File(binDir, "sh");
+        if (!sh.exists()) {
+            if (dash.exists()) {
+                createSymlink(binDir, "sh", "dash");
+            } else if (bash.exists()) {
+                createSymlink(binDir, "sh", "bash");
             }
+        }
 
-            File sh = new File(binDir, "sh");
-            if (!sh.exists()) {
-                if (dash.exists()) {
-                    createSymlink(binDir, "sh", "dash");
-                } else if (bash.exists()) {
-                    createSymlink(binDir, "sh", "bash");
+        // 2. Ensure coreutils / rm symlinks
+        String targetTool = coreutils.exists() ? "coreutils" : (busybox.exists() ? "busybox" : null);
+        if (targetTool != null) {
+            String[] commonTools = new String[]{
+                "rm", "cat", "ls", "cp", "mv", "ln", "chmod", "mkdir", "echo", "touch", "chown", "shred"
+            };
+            for (String tool : commonTools) {
+                File toolFile = new File(binDir, tool);
+                if (!toolFile.exists()) {
+                    createSymlink(binDir, tool, targetTool);
                 }
             }
+        }
 
-            if (busybox.exists()) {
-                String[] busyboxApplets = new String[]{
-                    "rm", "tar", "diff", "gzip", "gunzip", "sed", "grep", "cat", "chmod", "mkdir", "cp", "mv", "ln", "echo", "touch", "ls", "find"
-                };
-                for (String applet : busyboxApplets) {
-                    createSymlinkIfNotExists(binDir, applet, "busybox");
+        // 3. Ensure dpkg tools
+        if (dpkg.exists()) {
+            File dpkgDeb = new File(binDir, "dpkg-deb");
+            if (!dpkgDeb.exists()) {
+                createSymlink(binDir, "dpkg-deb", "dpkg");
+            }
+            File startStopDaemon = new File(binDir, "start-stop-daemon");
+            if (!startStopDaemon.exists()) {
+                createSymlink(binDir, "start-stop-daemon", "dpkg");
+            }
+        }
+
+        // 4. Force 0755 permissions on all files in executable directories
+        makeDirectoryExecutable(new File(usrDir, "bin"));
+        makeDirectoryExecutable(new File(usrDir, "libexec"));
+        makeDirectoryExecutable(new File(usrDir, "lib/apt/methods"));
+        makeDirectoryExecutable(new File(usrDir, "lib/apt/solvers"));
+        makeDirectoryExecutable(new File(usrDir, "lib/apt/planners"));
+
+        // 5. Verify and log status of all 6 expected dpkg binaries
+        String[] required = new String[]{"sh", "rm", "tar", "diff", "dpkg-deb", "start-stop-daemon"};
+        for (String req : required) {
+            File reqFile = new File(binDir, req);
+            boolean exists = reqFile.exists();
+            boolean canExec = reqFile.canExecute();
+            appendLog("[libtermux] Binary check: bin/" + req + " (exists=" + exists + ", canExecute=" + canExec + ")");
+            if (!canExec && exists) {
+                try {
+                    android.system.Os.chmod(reqFile.getAbsolutePath(), 0755);
+                    appendLog("[libtermux] Fixed permissions for bin/" + req + " -> 0755 (canExecute=" + reqFile.canExecute() + ")");
+                } catch (Throwable t) {
+                    appendLog("[warning] Failed chmod on bin/" + req + ": " + t.getMessage());
                 }
+            }
+        }
+    }
+
+    private void makeDirectoryExecutable(File dir) {
+        if (dir == null || !dir.exists() || !dir.isDirectory()) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                makeDirectoryExecutable(f);
+            } else {
+                try {
+                    android.system.Os.chmod(f.getAbsolutePath(), 0755);
+                } catch (Throwable ignored) {}
             }
         }
     }
