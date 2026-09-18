@@ -1,0 +1,44 @@
+#!/system/bin/sh
+set -x
+
+echo "[vibestudio-bootstrap] Starting environment setup..."
+export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
+export TMPDIR="$PREFIX/tmp"
+export TERM="xterm-256color"
+export TERMUX_PKG_NO_MIRROR_SELECT="true"
+
+echo "[vibestudio-bootstrap] PREFIX=$PREFIX"
+echo "[vibestudio-bootstrap] HOME=$HOME"
+echo "[vibestudio-bootstrap] PATH=$PATH"
+echo "[vibestudio-bootstrap] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+# Patch pkg script if it contains hardcoded /data/data/com.termux/files/usr
+if [ -x "$PREFIX/bin/pkg" ]; then
+    sed -i "s|/data/data/com.termux/files/usr|$PREFIX|g" "$PREFIX/bin/pkg" 2>/dev/null || true
+fi
+
+echo "[vibestudio-bootstrap] Checking available package managers..."
+# Link default mirror to chosen_mirrors
+if [ -f "$PREFIX/etc/termux/mirrors/default" ]; then
+    rm -f "$PREFIX/etc/termux/chosen_mirrors"
+    ln -sf "$PREFIX/etc/termux/mirrors/default" "$PREFIX/etc/termux/chosen_mirrors"
+fi
+
+if [ -x "$PREFIX/bin/pkg" ]; then
+    echo "[vibestudio-bootstrap] Found pkg at $PREFIX/bin/pkg"
+    echo "[vibestudio-bootstrap] Running pkg update..."
+    "$PREFIX/bin/pkg" update -y || true
+    echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
+    "$PREFIX/bin/pkg" install -y ca-certificates termux-keyring || true
+elif [ -x "$PREFIX/bin/apt-get" ]; then
+    echo "[vibestudio-bootstrap] Found apt-get at $PREFIX/bin/apt-get"
+    echo "[vibestudio-bootstrap] Running apt-get update..."
+    "$PREFIX/bin/apt-get" update -y || true
+    echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
+    "$PREFIX/bin/apt-get" install -y ca-certificates termux-keyring || true
+else
+    echo "[vibestudio-bootstrap] Warning: Neither pkg nor apt-get found at $PREFIX/bin"
+fi
+
+echo "[vibestudio-bootstrap] Environment setup completed!"
+exit 0

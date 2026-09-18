@@ -235,23 +235,44 @@
                 android:layout_marginBottom="16dp" />
 
             <!-- Log Terminal Output View -->
-            <ScrollView
-                android:id="@+id/install_log_scroll"
+            <RelativeLayout
                 android:layout_width="-1px"
-                android:layout_height="140dp"
-                android:background="#0A0A0A"
-                android:padding="10dp"
+                android:layout_height="160dp"
                 android:layout_marginBottom="12dp">
 
-                <TextView
-                    android:id="@+id/install_log_text"
+                <ScrollView
+                    android:id="@+id/install_log_scroll"
                     android:layout_width="-1px"
-                    android:layout_height="-2px"
-                    android:textColor="#00FF66"
-                    android:textSize="11sp"
-                    android:typeface="monospace"
-                    android:text="[installer] Ready to set up Termux-like environment.\n[installer] Target: /data/data/com.vibestudio.app/files/usr\n" />
-            </ScrollView>
+                    android:layout_height="-1px"
+                    android:background="#0A0A0A"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:id="@+id/install_log_text"
+                        android:layout_width="-1px"
+                        android:layout_height="-2px"
+                        android:textColor="#00FF66"
+                        android:textSize="11sp"
+                        android:typeface="monospace"
+                        android:textIsSelectable="true"
+                        android:text="[installer] Ready to set up Termux-like environment.\n[installer] Target: /data/data/com.vibestudio.app/files/usr\n" />
+                </ScrollView>
+
+                <Button
+                    android:id="@+id/btn_copy_logs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentRight="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_margin="8dp"
+                    android:text="Copy Logs"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp" />
+            </RelativeLayout>
 
         </LinearLayout>
 

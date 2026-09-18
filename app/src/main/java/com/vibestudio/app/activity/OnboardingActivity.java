@@ -274,6 +274,8 @@ public class OnboardingActivity extends Activity {
 
                     appendLog("[libtermux] Overriding Termux hardcoded paths...");
                     overrideSTermuxPaths(usrDir, homeDir);
+                    fixPermissionsRecursively(usrDir);
+                    runBootstrapScript(usrDir, homeDir, aptConfFile);
 
                     appendLog("[libtermux] Storing LibTermux settings in database...");
                     mDbHelper.setSetting("env_prefix", usrDir.getAbsolutePath());
@@ -395,6 +397,7 @@ public class OnboardingActivity extends Activity {
             java.nio.file.Files.write(aptConfFile.toPath(), aptConfContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             LogViewerService.getInstance().i(TAG, "Configured apt.conf at " + aptConfFile.getAbsolutePath());
 
+            setupDefaultMirrors(usrDir);
             fixSourcesListFiles(usrDir);
         } catch (Exception e) {
             LogViewerService.getInstance().w(TAG, "Failed to setup APT environment", e);
@@ -530,5 +533,75 @@ public class OnboardingActivity extends Activity {
         Intent intent = new Intent(OnboardingActivity.this, MainActivity.class);
         startActivity(intent);
         finish();
+    }
+
+    private void runBootstrapScript(File usrDir, File homeDir, File aptConfFile) throws Exception {
+        appendLog("[libtermux] Deploying and running vibestudio-bootstrap.sh...");
+        File scriptFile = new File(usrDir, "tmp/vibestudio-bootstrap.sh");
+        if (scriptFile.getParentFile() != null) { scriptFile.getParentFile().mkdirs(); }
+        byte[] scriptBytes = null;
+        try (java.io.InputStream in = getAssets().open("vibestudio-bootstrap.sh")) {
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[1024]; int read;
+            while ((read = in.read(buffer)) != -1) { baos.write(buffer, 0, read); }
+            scriptBytes = baos.toByteArray();
+        } catch (java.io.FileNotFoundException fnfe) {
+            appendLog("[warning] Asset vibestudio-bootstrap.sh not found, using default script...");
+            String defaultScript = "#!/system/bin/sh\nset -x\n";
+            scriptBytes = defaultScript.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(scriptFile)) { out.write(scriptBytes); }
+        try { android.system.Os.chmod(scriptFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+        File shBin = new File(usrDir, "bin/sh");
+        String shellPath = shBin.exists() ? shBin.getAbsolutePath() : "/system/bin/sh";
+        ProcessBuilder pb = new ProcessBuilder(shellPath, scriptFile.getAbsolutePath());
+        pb.environment().put("PREFIX", usrDir.getAbsolutePath());
+        pb.environment().put("HOME", homeDir.getAbsolutePath());
+        pb.environment().put("PATH", new File(usrDir, "bin").getAbsolutePath() + ":/system/bin");
+        pb.environment().put("LD_LIBRARY_PATH", new File(usrDir, "lib").getAbsolutePath());
+        pb.environment().put("TMPDIR", new File(usrDir, "tmp").getAbsolutePath());
+        pb.environment().put("TERM", "xterm-256color"); pb.environment().put("TERMUX_PKG_NO_MIRROR_SELECT", "true");
+        if (aptConfFile != null && aptConfFile.exists()) { pb.environment().put("APT_CONFIG", aptConfFile.getAbsolutePath()); }
+        pb.directory(usrDir); pb.redirectErrorStream(true);
+        Process process = pb.start();
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+            String l; while ((l = reader.readLine()) != null) { appendLog(l); }
+        }
+        int exitCode = process.waitFor();
+        appendLog("[libtermux] vibestudio-bootstrap.sh finished with exit code " + exitCode);
+        if (exitCode != 0) { throw new RuntimeException("vibestudio-bootstrap.sh failed with exit code " + exitCode); }
+    }
+
+    private void fixPermissionsRecursively(File file) {
+        if (file == null || !file.exists()) return;
+        try {
+            boolean isDir = file.isDirectory();
+            boolean isExec = isDir || file.canExecute() || (file.getParentFile() != null && ("bin".equals(file.getParentFile().getName()) || "lib".equals(file.getParentFile().getName())));
+            android.system.Os.chmod(file.getAbsolutePath(), isDir ? 0755 : (isExec ? 0755 : 0644));
+            if (isDir) {
+                File[] children = file.listFiles();
+                if (children != null) { for (File child : children) { fixPermissionsRecursively(child); } }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void setupDefaultMirrors(File usrDir) {
+        try {
+            File chosenMirrors = new File(usrDir, "etc/termux/chosen_mirrors");
+            File defaultMirror = new File(usrDir, "etc/termux/mirrors/default");
+            if (defaultMirror.exists()) {
+                try {
+                    if (chosenMirrors.exists() || chosenMirrors.isAbsolute()) { chosenMirrors.delete(); }
+                    android.system.Os.symlink(defaultMirror.getAbsolutePath(), chosenMirrors.getAbsolutePath());
+                    LogViewerService.getInstance().i(TAG, "Linked chosen_mirrors to default mirror");
+                } catch (Throwable t) {
+                    LogViewerService.getInstance().w(TAG, "Failed to symlink chosen_mirrors", t);
+                }
+            }
+            File repositorySu = new File(usrDir, "etc/termux/mirrors/russia/repository.su");
+            if (repositorySu.exists()) { repositorySu.delete(); }
+        } catch (Exception e) {
+            LogViewerService.getInstance().w(TAG, "Failed to setup default mirrors", e);
+        }
     }
 }
