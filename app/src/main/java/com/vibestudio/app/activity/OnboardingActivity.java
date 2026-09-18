@@ -392,7 +392,7 @@ public class OnboardingActivity extends Activity {
                     "Dir::Bin::apt-key \"" + new File(usrDir, "bin/apt-key").getAbsolutePath() + "\";\n" +
                     "Dir::Bin::gpg \"" + new File(usrDir, "bin/gpg").getAbsolutePath() + "\";\n" +
                     "Dir::Bin::gpgv \"" + new File(usrDir, "bin/gpgv").getAbsolutePath() + "\";\n" +
-                    "DPKG::Options { \"--force-confdef\"; \"--force-confold\"; };\n" +
+                    "DPKG::Options { \"--admindir=" + dpkgDir.getAbsolutePath() + "\"; \"--force-confdef\"; \"--force-confold\"; };\n" +
                     "APT::System \"Debian dpkg interface\";\n" +
                     "APT::Get::AllowUnauthenticated \"true\";\n" +
                     "Acquire::AllowInsecureRepositories \"true\";\n" +
@@ -572,7 +572,7 @@ public class OnboardingActivity extends Activity {
         pb.environment().put("PATH", new File(usrDir, "bin").getAbsolutePath() + ":/system/bin");
         pb.environment().put("LD_LIBRARY_PATH", new File(usrDir, "lib").getAbsolutePath());
         pb.environment().put("TMPDIR", new File(usrDir, "tmp").getAbsolutePath());
-        pb.environment().put("TERM", "xterm-256color"); pb.environment().put("TERMUX_PKG_NO_MIRROR_SELECT", "true");
+        pb.environment().put("TERM", "xterm-256color"); pb.environment().put("TERMUX_PKG_NO_MIRROR_SELECT", "true"); pb.environment().put("DPKG_ADMINDIR", new File(usrDir, "var/lib/dpkg").getAbsolutePath());
         if (aptConfFile != null && aptConfFile.exists()) { pb.environment().put("APT_CONFIG", aptConfFile.getAbsolutePath()); }
         pb.directory(usrDir); pb.redirectErrorStream(true);
         Process process = pb.start();

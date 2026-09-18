@@ -6,13 +6,16 @@ export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export TMPDIR="$PREFIX/tmp"
 export TERM="xterm-256color"
 export TERMUX_PKG_NO_MIRROR_SELECT="true"
+export DPKG_ADMINDIR="$PREFIX/var/lib/dpkg"
 
 echo "[vibestudio-bootstrap] PREFIX=$PREFIX"
 echo "[vibestudio-bootstrap] HOME=$HOME"
 echo "[vibestudio-bootstrap] PATH=$PATH"
 echo "[vibestudio-bootstrap] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+echo "[vibestudio-bootstrap] DPKG_ADMINDIR=$DPKG_ADMINDIR"
 
-mkdir -p "$PREFIX/etc/dpkg/dpkg.cfg.d" "$PREFIX/var/lib/dpkg"
+mkdir -p "$PREFIX/etc/dpkg/dpkg.cfg.d" "$PREFIX/var/lib/dpkg/updates" "$PREFIX/var/lib/dpkg/info" "$PREFIX/var/lib/dpkg/triggers" "$PREFIX/var/lib/dpkg/alternatives"
+touch "$PREFIX/var/lib/dpkg/status" "$PREFIX/var/lib/dpkg/available"
 
 # Patch pkg script if it contains hardcoded /data/data/com.termux/files/usr
 if [ -x "$PREFIX/bin/pkg" ]; then

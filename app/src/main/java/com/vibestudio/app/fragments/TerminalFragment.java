@@ -81,6 +81,7 @@ public class TerminalFragment extends Fragment {
                     .addEnv("TERMUX_MAIN_PACKAGE_FORMAT", "debian")
                     .addEnv("TERMUX_PKG_NO_MIRROR_SELECT", "1")
                     .addEnv("APT_CONFIG", aptConfFile.getAbsolutePath())
+                    .addEnv("DPKG_ADMINDIR", new File(usrDir, "var/lib/dpkg").getAbsolutePath())
                     .build();
             mLibTermux = LibTermux.Companion.init(context.getApplicationContext(), config);
             mIsPrepared = true;
