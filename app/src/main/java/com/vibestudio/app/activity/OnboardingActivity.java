@@ -526,6 +526,12 @@ public class OnboardingActivity extends Activity {
                             }
                             count++;
                         }
+                    } else {
+                        byte[] pattern = "/data/data/com.termux".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        byte[] replacement = "/data/data/com.absent".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        if (replaceBytesInFile(file, pattern, replacement)) {
+                            count++;
+                        }
                     }
                 } catch (Exception e) {
                     LogViewerService.getInstance().w(TAG, "Failed to process path for " + file.getName(), e);
