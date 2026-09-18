@@ -569,7 +569,7 @@ public class OnboardingActivity extends Activity {
         ProcessBuilder pb = new ProcessBuilder(shellPath, scriptFile.getAbsolutePath());
         pb.environment().put("PREFIX", usrDir.getAbsolutePath());
         pb.environment().put("HOME", homeDir.getAbsolutePath());
-        pb.environment().put("PATH", new File(usrDir, "bin").getAbsolutePath() + ":/system/bin");
+        pb.environment().put("PATH", new File(usrDir, "bin").getAbsolutePath() + ":" + new File(usrDir, "bin/applets").getAbsolutePath() + ":/system/bin:/system/xbin");
         pb.environment().put("LD_LIBRARY_PATH", new File(usrDir, "lib").getAbsolutePath());
         pb.environment().put("TMPDIR", new File(usrDir, "tmp").getAbsolutePath());
         pb.environment().put("TERM", "xterm-256color"); pb.environment().put("TERMUX_PKG_NO_MIRROR_SELECT", "true"); pb.environment().put("DPKG_ADMINDIR", new File(usrDir, "var/lib/dpkg").getAbsolutePath());
@@ -585,14 +585,23 @@ public class OnboardingActivity extends Activity {
     }
 
     private void fixPermissionsRecursively(File file) {
-        if (file == null || !file.exists()) return;
+        if (file == null) return;
         try {
             boolean isDir = file.isDirectory();
-            boolean isExec = isDir || file.canExecute() || (file.getParentFile() != null && ("bin".equals(file.getParentFile().getName()) || "lib".equals(file.getParentFile().getName())));
-            android.system.Os.chmod(file.getAbsolutePath(), isDir ? 0755 : (isExec ? 0755 : 0644));
+            File parent = file.getParentFile();
+            String parentName = (parent != null) ? parent.getName() : "";
+            boolean isExecDir = "bin".equals(parentName) || "libexec".equals(parentName) || "applets".equals(parentName) || "methods".equals(parentName);
+            boolean isExec = isDir || isExecDir || file.canExecute();
+            try {
+                android.system.Os.chmod(file.getAbsolutePath(), isExec ? 0755 : 0644);
+            } catch (Throwable ignored) {}
             if (isDir) {
                 File[] children = file.listFiles();
-                if (children != null) { for (File child : children) { fixPermissionsRecursively(child); } }
+                if (children != null) {
+                    for (File child : children) {
+                        fixPermissionsRecursively(child);
+                    }
+                }
             }
         } catch (Throwable ignored) {}
     }

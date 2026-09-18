@@ -2,6 +2,7 @@
 set -ex
 
 echo "[vibestudio-bootstrap] Starting environment setup..."
+export PATH="$PREFIX/bin:$PREFIX/bin/applets:/system/bin:$PATH"
 export LD_LIBRARY_PATH="$PREFIX/lib:$LD_LIBRARY_PATH"
 export TMPDIR="$PREFIX/tmp"
 export TERM="xterm-256color"
@@ -13,6 +14,8 @@ echo "[vibestudio-bootstrap] HOME=$HOME"
 echo "[vibestudio-bootstrap] PATH=$PATH"
 echo "[vibestudio-bootstrap] LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 echo "[vibestudio-bootstrap] DPKG_ADMINDIR=$DPKG_ADMINDIR"
+
+chmod -R 755 "$PREFIX/bin" "$PREFIX/libexec" "$PREFIX/lib/apt/methods" 2>/dev/null || true
 
 mkdir -p "$PREFIX/etc/dpkg/dpkg.cfg.d" "$PREFIX/var/lib/dpkg/updates" "$PREFIX/var/lib/dpkg/info" "$PREFIX/var/lib/dpkg/triggers" "$PREFIX/var/lib/dpkg/alternatives"
 touch "$PREFIX/var/lib/dpkg/status" "$PREFIX/var/lib/dpkg/available"
