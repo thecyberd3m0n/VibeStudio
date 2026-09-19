@@ -330,7 +330,7 @@ public class OnboardingActivity extends Activity {
                     // Setup clean MOTD message
                     File motdFile = new File(usrDir, "etc/motd");
                     try (java.io.FileWriter writer = new java.io.FileWriter(motdFile)) {
-                        writer.write("Welcome to Termux!\n\nDocs:       https://termux.dev/docs\nDonate:     https://termux.dev/donate\nCommunity:  https://termux.dev/community\n\nWorking with packages:\n\n - Search:  pkg search <query>\n - Install: pkg install <package>\n - Upgrade: pkg upgrade\n\nSubscribing to additional repositories:\n\n - Root:    pkg install root-repo\n - X11:     pkg install x11-repo\n\nFor fixing any repository issues,\ntry 'termux-change-repo' command.\n");
+                        writer.write("Welcome to Termux!\n\nDocs:       https://termux.dev/docs\nDonate:     https://termux.dev/donate\nCommunity:  https://termux.dev/community\nIssues:     https://termux.dev/issues\n\nWorking with packages:\n\n - Search:  pkg search <query>\n - Install: pkg install <package>\n - Upgrade: pkg upgrade\n\nSubscribing to additional repositories:\n\n - Root:    pkg install root-repo\n - X11:     pkg install x11-repo\n\nFor fixing any repository issues,\ntry 'termux-change-repo' command.\n");
                     } catch (Throwable ignored) {}
 
                     appendLog("[libtermux] Storing LibTermux settings in database...");

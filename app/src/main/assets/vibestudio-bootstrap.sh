@@ -57,6 +57,7 @@ Welcome to Termux!
 Docs:       https://termux.dev/docs
 Donate:     https://termux.dev/donate
 Community:  https://termux.dev/community
+Issues:     https://termux.dev/issues
 
 Working with packages:
 
