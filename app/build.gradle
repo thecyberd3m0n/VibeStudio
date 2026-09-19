@@ -36,6 +36,12 @@ dependencies {
     implementation 'io.modelcontextprotocol.sdk:mcp:2.0.0'
 // Point to the core library module inside your submodule
     implementation project(':core')
+    implementation project(':terminal-view')
+    implementation project(':bootstrap-arm64')
+    implementation project(':bootstrap-arm')
+    implementation project(':bootstrap-x86_64')
+    implementation project(':bootstrap-x86')
+    
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
