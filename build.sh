@@ -85,7 +85,7 @@ done
 # Remove existing stale app R.java if present in app/src/main/java
 rm -f app/src/main/java/com/vibestudio/app/R.java
 
-AAPT2_LINK_CMD="aapt2 link -o bin/app.unsigned.apk -I libs/android.jar --manifest app/src/main/AndroidManifest.xml --java gen_r --auto-add-overlay"
+AAPT2_LINK_CMD="aapt2 link -o bin/app.unsigned.apk -I libs/android.jar --manifest app/src/main/AndroidManifest.xml --min-sdk-version 26 --target-sdk-version 28 --version-code 1 --version-name 1.0 --replace-version --java gen_r --auto-add-overlay"
 if [ -d "app/src/main/assets" ]; then
     AAPT2_LINK_CMD="$AAPT2_LINK_CMD -A app/src/main/assets"
 fi
@@ -137,6 +137,6 @@ jarsigner -keystore debug.keystore -storepass android -keypass android bin/app.u
 rm -f bin/app.aligned.apk
 zipalign -v -p 4 bin/app.unsigned.apk bin/app.aligned.apk > /dev/null
 
-apksigner sign --ks debug.keystore --ks-pass pass:android --min-sdk-version 1 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out bin/VibeStudio.apk bin/app.aligned.apk
+apksigner sign --ks debug.keystore --ks-pass pass:android --min-sdk-version 26 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out bin/VibeStudio.apk bin/app.aligned.apk
 
 echo "=== VibeStudio Build Complete! APK generated at bin/VibeStudio.apk ==="

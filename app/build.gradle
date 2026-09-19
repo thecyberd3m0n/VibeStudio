@@ -9,17 +9,40 @@ android {
     defaultConfig {
         applicationId "com.vibestudio.app"
         minSdk 26
-        targetSdk 34
+        targetSdk 28
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17"
+            }
+        }
+
+        ndk {
+            abiFilters "arm64-v8a", "x86_64", "armeabi-v7a", "x86"
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    packagingOptions {
+        pickFirst 'lib/*/libtermux.so'
+        jniLibs {
+            useLegacyPackaging true
         }
     }
     compileOptions {

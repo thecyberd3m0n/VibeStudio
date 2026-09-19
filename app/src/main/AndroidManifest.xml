@@ -10,6 +10,7 @@
         android:name=".VibeApplication"
         android:label="VibeStudio" 
         android:theme="@style/AppTheme"
+        android:extractNativeLibs="true"
         android:allowBackup="true">
 
         <service 

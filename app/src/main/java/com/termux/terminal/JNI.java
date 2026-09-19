@@ -1,12 +1,21 @@
 package com.termux.terminal;
 
+import android.util.Log;
+
 /**
  * Native methods for creating and managing pseudoterminal subprocesses. C code is in jni/termux.c.
  */
 final class JNI {
 
     static {
-        System.loadLibrary("termux");
+        try {
+            System.loadLibrary("termux");
+        } catch (Throwable t) {
+            Log.e("termux-jni", "Failed to load libtermux.so", t);
+            UnsatisfiedLinkError ule = new UnsatisfiedLinkError("Failed to load libtermux.so: " + t.getMessage());
+            ule.initCause(t);
+            throw ule;
+        }
     }
 
     /**
