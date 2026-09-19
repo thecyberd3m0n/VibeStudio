@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,16 +26,18 @@ import com.vibestudio.app.db.DatabaseHelper;
 
 public class ModelsFragment extends Fragment {
 
+    private static final String TAG = "ModelsFragment";
     private static final int MATCH_PARENT = -1;
     private static final int WRAP_CONTENT = -2;
 
     private DatabaseHelper mDbHelper;
+    private TextView mStatusTextView;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getActivity() != null) {
-            mDbHelper = new DatabaseHelper(getActivity());
+            mDbHelper = new DatabaseHelper(getActivity().getApplicationContext());
         }
     }
 
@@ -49,7 +52,6 @@ public class ModelsFragment extends Fragment {
         mainContainer.setOrientation(LinearLayout.VERTICAL);
 
         final String provider = "Gemini";
-        final String savedKey = mDbHelper != null ? mDbHelper.getApiKey(provider) : null;
 
         LinearLayout card = createCard(context);
 
@@ -65,44 +67,61 @@ public class ModelsFragment extends Fragment {
         desc.setTextSize(14);
         desc.setPadding(0, 8, 0, 8);
 
-        final TextView status = new TextView(context);
-        if (!TextUtils.isEmpty(savedKey)) {
-            status.setText("Status: Configured (API Key set) • Click to edit");
-            status.setTextColor(Color.parseColor("#03DAC6"));
-        } else {
-            status.setText("Status: Not configured (Click to set Gemini API Key)");
-            status.setTextColor(Color.parseColor("#FFB74D"));
-        }
-        status.setTextSize(12);
+        mStatusTextView = new TextView(context);
+        mStatusTextView.setTextSize(12);
 
         card.addView(name);
         card.addView(desc);
-        card.addView(status);
+        card.addView(mStatusTextView);
 
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showApiKeyDialog(context, provider, status);
+                showApiKeyDialog(context, provider);
             }
         });
 
         mainContainer.addView(card);
         scrollView.addView(mainContainer);
+
+        updateStatusView(provider);
+
         return scrollView;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateStatusView("Gemini");
+    }
+
+    private void updateStatusView(String provider) {
+        if (mStatusTextView == null) return;
+
+        String savedKey = mDbHelper != null ? mDbHelper.getApiKey(provider) : null;
+        if (!TextUtils.isEmpty(savedKey)) {
+            mStatusTextView.setText("Status: Configured (API Key set) • Click to edit");
+            mStatusTextView.setTextColor(Color.parseColor("#03DAC6"));
+            Log.d(TAG, provider + " API Key loaded from SQLite db");
+        } else {
+            mStatusTextView.setText("Status: Not configured (Click to set Gemini API Key)");
+            mStatusTextView.setTextColor(Color.parseColor("#FFB74D"));
+            Log.d(TAG, provider + " API Key is not set in SQLite db");
+        }
     }
 
     private LinearLayout createCard(Context context) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#1E1E24"));
+        card.setBackgroundColor(Color.parseColor("#1E1E1E"));
         card.setPadding(24, 24, 24, 24);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
-        params.setMargins(0, 0, 0, 20);
+        params.setMargins(16, 16, 16, 0);
         card.setLayoutParams(params);
         return card;
     }
 
-    private void showApiKeyDialog(final Context context, final String provider, final TextView statusTextView) {
+    private void showApiKeyDialog(final Context context, final String provider) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("Configure " + provider + " API Key");
 
@@ -124,10 +143,10 @@ public class ModelsFragment extends Fragment {
                 if (!TextUtils.isEmpty(key)) {
                     if (mDbHelper != null) {
                         mDbHelper.saveApiKey(provider, key);
+                        Log.i(TAG, provider + " API Key successfully saved/updated in SQLite DB");
                     }
-                    statusTextView.setText("Status: Configured (API Key set) • Click to edit");
-                    statusTextView.setTextColor(Color.parseColor("#03DAC6"));
-                    Toast.makeText(context, provider + " API Key saved to database!", Toast.LENGTH_SHORT).show();
+                    updateStatusView(provider);
+                    Toast.makeText(context, provider + " API Key saved!", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(context, "API Key cannot be empty", Toast.LENGTH_SHORT).show();
                 }
