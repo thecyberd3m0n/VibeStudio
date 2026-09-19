@@ -8,12 +8,13 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +24,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.vibestudio.app.db.DatabaseHelper;
+import com.vibestudio.app.mcp.GeminiValidator;
+import com.vibestudio.app.service.LogViewerService;
 
 public class ModelsFragment extends Fragment {
 
@@ -102,11 +105,11 @@ public class ModelsFragment extends Fragment {
         if (!TextUtils.isEmpty(savedKey)) {
             mStatusTextView.setText("Status: Configured (API Key set) • Click to edit");
             mStatusTextView.setTextColor(Color.parseColor("#03DAC6"));
-            Log.d(TAG, provider + " API Key loaded from SQLite db");
+            LogViewerService.getInstance().d(TAG, provider + " API Key loaded from SQLite db");
         } else {
             mStatusTextView.setText("Status: Not configured (Click to set Gemini API Key)");
             mStatusTextView.setTextColor(Color.parseColor("#FFB74D"));
-            Log.d(TAG, provider + " API Key is not set in SQLite db");
+            LogViewerService.getInstance().d(TAG, provider + " API Key is not set in SQLite db");
         }
     }
 
@@ -122,8 +125,9 @@ public class ModelsFragment extends Fragment {
     }
 
     private void showApiKeyDialog(final Context context, final String provider) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Configure " + provider + " API Key");
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 24, 32, 24);
 
         final EditText input = new EditText(context);
         input.setHint("Enter " + provider + " API Key");
@@ -134,32 +138,79 @@ public class ModelsFragment extends Fragment {
             input.setText(currentKey);
         }
 
-        builder.setView(input);
+        final TextView errorTextView = new TextView(context);
+        errorTextView.setTextColor(Color.parseColor("#CF6679"));
+        errorTextView.setTextSize(13);
+        errorTextView.setPadding(0, 12, 0, 0);
+        errorTextView.setVisibility(View.GONE);
 
-        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String key = input.getText().toString().trim();
-                if (!TextUtils.isEmpty(key)) {
-                    if (mDbHelper != null) {
-                        mDbHelper.saveApiKey(provider, key);
-                        Log.i(TAG, provider + " API Key successfully saved/updated in SQLite DB");
-                    }
-                    updateStatusView(provider);
-                    Toast.makeText(context, provider + " API Key saved!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(context, "API Key cannot be empty", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+        final ProgressBar progressBar = new ProgressBar(context);
+        progressBar.setVisibility(View.GONE);
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
+        progressParams.topMargin = 16;
+        progressBar.setLayoutParams(progressParams);
 
+        layout.addView(input);
+        layout.addView(progressBar);
+        layout.addView(errorTextView);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Configure " + provider + " API Key");
+        builder.setView(layout);
+
+        builder.setPositiveButton("Save", null);
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
+                dialog.dismiss();
             }
         });
 
-        builder.show();
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+
+        Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        positiveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String key = input.getText().toString().trim();
+                if (TextUtils.isEmpty(key)) {
+                    errorTextView.setText("API Key cannot be empty");
+                    errorTextView.setVisibility(View.VISIBLE);
+                    return;
+                }
+
+                // Show loading indicator & disable inputs
+                progressBar.setVisibility(View.VISIBLE);
+                errorTextView.setVisibility(View.GONE);
+                input.setEnabled(false);
+                positiveButton.setEnabled(false);
+
+                LogViewerService.getInstance().i(TAG, "Starting validation for " + provider + " API Key...");
+
+                GeminiValidator.validateKey(key, new GeminiValidator.ValidationCallback() {
+                    @Override
+                    public void onSuccess() {
+                        if (mDbHelper != null) {
+                            mDbHelper.saveApiKey(provider, key);
+                            LogViewerService.getInstance().i(TAG, provider + " API Key validated and saved to SQLite DB.");
+                        }
+                        updateStatusView(provider);
+                        Toast.makeText(context, provider + " API Key validated & saved!", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        progressBar.setVisibility(View.GONE);
+                        input.setEnabled(true);
+                        positiveButton.setEnabled(true);
+                        errorTextView.setText(errorMessage);
+                        errorTextView.setVisibility(View.VISIBLE);
+                        LogViewerService.getInstance().w(TAG, provider + " API Key validation error: " + errorMessage);
+                    }
+                });
+            }
+        });
     }
 }
