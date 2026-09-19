@@ -85,7 +85,7 @@ done
 # Remove existing stale app R.java if present in app/src/main/java
 rm -f app/src/main/java/com/vibestudio/app/R.java
 
-AAPT2_LINK_CMD="aapt2 link -o bin/app.unsigned.apk -I libs/android.jar --manifest app/src/main/AndroidManifest.xml --java gen_r --auto-add-overlay"
+AAPT2_LINK_CMD="aapt2 link -o bin/app.unsigned.apk -I libs/android.jar --manifest app/src/main/AndroidManifest.xml --min-sdk-version 26 --target-sdk-version 28 --java gen_r --auto-add-overlay"
 if [ -d "app/src/main/assets" ]; then
     AAPT2_LINK_CMD="$AAPT2_LINK_CMD -A app/src/main/assets"
 fi
@@ -117,6 +117,27 @@ d8 --min-api 24 --lib libs/android.jar --output bin/ bin/app_classes.jar $DEX_LI
 
 echo "=== Adding classes.dex to APK ==="
 # Add native libraries (e.g. libtermux.so) into lib/ in the APK
+if [ -f "app/src/main/cpp/termux.cpp" ] && command -v clang++ >/dev/null 2>&1; then
+    echo "=== Compiling native libtermux.so with clang++ ==="
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        aarch64) ABI="arm64-v8a" ;;
+        armv7l|armv8l) ABI="armeabi-v7a" ;;
+        x86_64) ABI="x86_64" ;;
+        i686|x86) ABI="x86" ;;
+        *) ABI="arm64-v8a" ;;
+    esac
+    mkdir -p "app/src/main/jniLibs/$ABI"
+    clang++ -shared -fPIC -O2 -std=c++17 \
+        app/src/main/cpp/termux.cpp \
+        -llog -lpty \
+        -o "app/src/main/jniLibs/$ABI/libtermux.so" 2>/dev/null || \
+    clang++ -shared -fPIC -O2 -std=c++17 \
+        app/src/main/cpp/termux.cpp \
+        -llog \
+        -o "app/src/main/jniLibs/$ABI/libtermux.so" || true
+fi
+
 if [ -d "app/src/main/jniLibs" ]; then
     echo "=== Adding native libraries to APK ==="
     mkdir -p lib
@@ -137,6 +158,6 @@ jarsigner -keystore debug.keystore -storepass android -keypass android bin/app.u
 rm -f bin/app.aligned.apk
 zipalign -v -p 4 bin/app.unsigned.apk bin/app.aligned.apk > /dev/null
 
-apksigner sign --ks debug.keystore --ks-pass pass:android --min-sdk-version 1 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out bin/VibeStudio.apk bin/app.aligned.apk
+apksigner sign --ks debug.keystore --ks-pass pass:android --min-sdk-version 26 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out bin/VibeStudio.apk bin/app.aligned.apk
 
 echo "=== VibeStudio Build Complete! APK generated at bin/VibeStudio.apk ==="
