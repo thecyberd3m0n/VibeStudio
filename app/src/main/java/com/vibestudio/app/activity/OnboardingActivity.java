@@ -31,6 +31,20 @@ import kotlinx.coroutines.flow.Flow;
 import kotlinx.coroutines.flow.FlowCollector;
 
 public class OnboardingActivity extends Activity {
+    private static void deleteRecursive(File fileOrDirectory) {
+        if (fileOrDirectory != null && fileOrDirectory.exists()) {
+            if (fileOrDirectory.isDirectory()) {
+                File[] children = fileOrDirectory.listFiles();
+                if (children != null) {
+                    for (File child : children) {
+                        deleteRecursive(child);
+                    }
+                }
+            }
+            fileOrDirectory.delete();
+        }
+    }
+
 
     private static final String TAG = "OnboardingActivity";
 
@@ -277,6 +291,11 @@ public class OnboardingActivity extends Activity {
                     setupSymlinksAndPermissions(usrDir);
                     fixPermissionsRecursively(usrDir);
                     runBootstrapScript(usrDir, homeDir, aptConfFile);
+
+                    File secondStageDir = new File(usrDir, "etc/termux/termux-bootstrap");
+                    if (secondStageDir.exists()) {
+                        deleteRecursive(secondStageDir);
+                    }
 
                     appendLog("[libtermux] Storing LibTermux settings in database...");
                     mDbHelper.setSetting("env_prefix", usrDir.getAbsolutePath());
