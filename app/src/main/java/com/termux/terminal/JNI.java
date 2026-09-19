@@ -12,6 +12,9 @@ final class JNI {
             System.loadLibrary("termux");
         } catch (Throwable t) {
             Log.e("termux-jni", "Failed to load libtermux.so", t);
+            UnsatisfiedLinkError ule = new UnsatisfiedLinkError("Failed to load libtermux.so: " + t.getMessage());
+            ule.initCause(t);
+            throw ule;
         }
     }
 

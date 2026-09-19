@@ -41,6 +41,9 @@ android {
     }
     packagingOptions {
         pickFirst 'lib/*/libtermux.so'
+        jniLibs {
+            useLegacyPackaging true
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
