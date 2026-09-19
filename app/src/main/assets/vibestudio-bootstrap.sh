@@ -8,6 +8,7 @@ export TMPDIR="$PREFIX/tmp"
 export TERM="xterm-256color"
 export TERMUX_PKG_NO_MIRROR_SELECT="true"
 export DPKG_ADMINDIR="$PREFIX/var/lib/dpkg"
+export APT_CONFIG="$PREFIX/etc/apt/apt.conf"
 
 echo "[vibestudio-bootstrap] PREFIX=$PREFIX"
 echo "[vibestudio-bootstrap] HOME=$HOME"
