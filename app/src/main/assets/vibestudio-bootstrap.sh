@@ -27,15 +27,25 @@ if [ -x "$PREFIX/bin/pkg" ]; then
 fi
 
 
-# Neutralize termux-bootstrap second-stage triggers
+
+# Neutralize termux-bootstrap second-stage triggers completely and silently
 if [ -d "$PREFIX/etc/termux/termux-bootstrap" ]; then
     mkdir -p "$PREFIX/etc/termux/termux-bootstrap/second-stage"
-    printf "#!/system/bin/sh\nexit 0\n" > "$PREFIX/etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh"
+    echo "#!/system/bin/sh" > "$PREFIX/etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh"
+    echo "exit 0" >> "$PREFIX/etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh"
     chmod 755 "$PREFIX/etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh"
 fi
 
-if [ -f "$PREFIX/etc/profile.d/termux-bootstrap.sh" ]; then
-    rm -f "$PREFIX/etc/profile.d/termux-bootstrap.sh"
+rm -f "$PREFIX/etc/profile.d/termux-bootstrap.sh" 2>/dev/null || true
+
+# Strip any fallback run log lines from profile scripts
+if [ -f "$PREFIX/etc/profile" ]; then
+    sed -i "/fallback run/d" "$PREFIX/etc/profile" 2>/dev/null || true
+    sed -i "/termux-bootstrap/d" "$PREFIX/etc/profile" 2>/dev/null || true
+fi
+if [ -f "$PREFIX/etc/bash.bashrc" ]; then
+    sed -i "/fallback run/d" "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
+    sed -i "/termux-bootstrap/d" "$PREFIX/etc/bash.bashrc" 2>/dev/null || true
 fi
 
 echo "[vibestudio-bootstrap] Checking available package managers..."

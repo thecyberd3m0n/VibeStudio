@@ -31,6 +31,22 @@ import kotlinx.coroutines.flow.Flow;
 import kotlinx.coroutines.flow.FlowCollector;
 
 public class OnboardingActivity extends Activity {
+    
+    private static void cleanProfileFile(File file) {
+        if (file != null && file.exists()) {
+            try {
+                java.util.List<String> lines = java.nio.file.Files.readAllLines(file.toPath());
+                java.util.List<String> filtered = new java.util.ArrayList<>();
+                for (String line : lines) {
+                    if (!line.contains("fallback run") && !line.contains("termux-bootstrap")) {
+                        filtered.add(line);
+                    }
+                }
+                java.nio.file.Files.write(file.toPath(), filtered);
+            } catch (Throwable ignored) {}
+        }
+    }
+
     private static void deleteRecursive(File fileOrDirectory) {
         if (fileOrDirectory != null && fileOrDirectory.exists()) {
             if (fileOrDirectory.isDirectory()) {
@@ -306,6 +322,10 @@ public class OnboardingActivity extends Activity {
                     if (profileDBootstrap.exists()) {
                         profileDBootstrap.delete();
                     }
+
+                    // Clean profile files to strip fallback run messages
+                    cleanProfileFile(new File(usrDir, "etc/profile"));
+                    cleanProfileFile(new File(usrDir, "etc/bash.bashrc"));
 
                     appendLog("[libtermux] Storing LibTermux settings in database...");
                     mDbHelper.setSetting("env_prefix", usrDir.getAbsolutePath());
