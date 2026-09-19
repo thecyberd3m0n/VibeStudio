@@ -627,7 +627,7 @@ public class OnboardingActivity extends Activity {
                     try { android.system.Os.chmod(dpkgRealFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                     String wrapperContent = "#!/system/bin/sh\n" +
                             "PREFIX=\"${PREFIX:-" + usrDir.getAbsolutePath() + "}\"\n" +
-                            "exec \"$PREFIX/bin/dpkg.real\" --root=\"$PREFIX\" --admindir=\"$PREFIX/var/lib/dpkg\" \"$@\"\n";
+                            "exec \"$PREFIX/bin/dpkg.real\" --root=\"$PREFIX\" --admindir=\"$PREFIX/var/lib/dpkg\" --force-script-chrootless --force-unsafe-io \"$@\"\n";
                     try (java.io.FileOutputStream out = new java.io.FileOutputStream(dpkgFile)) {
                         out.write(wrapperContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                     } catch (Throwable ignored) {}
