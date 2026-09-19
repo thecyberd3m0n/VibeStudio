@@ -15,3 +15,10 @@ build_termux.sh
 gen_r/
 compiled_res/
 build/extracted_aars/
+
+# Android Studio and IDE local files
+.idea/
+*.iml
+local.properties
+.artifacts/
+.cache/
