@@ -4,6 +4,7 @@ import com.vibestudio.app.R;
 import com.vibestudio.app.db.DatabaseHelper;
 import com.vibestudio.app.logging.CrashHandler;
 import com.vibestudio.app.service.LogViewerService;
+import com.vibestudio.app.fragments.*;
 
 import com.libtermux.LibTermux;
 import com.libtermux.TermuxConfig;
@@ -17,15 +18,35 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.system.Os;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
+import kotlinx.coroutines.BuildersKt;
 import kotlinx.coroutines.Dispatchers;
 import kotlinx.coroutines.flow.Flow;
 import kotlinx.coroutines.flow.FlowCollector;
@@ -42,8 +63,8 @@ public class OnboardingActivity extends Activity {
             if (list != null) {
                 for (String fileName : list) {
                     File outFile = new File(targetDir, fileName);
-                    try (java.io.InputStream in = getAssets().open(assetSubDir + "/" + fileName);
-                         java.io.FileOutputStream out = new java.io.FileOutputStream(outFile)) {
+                    try (InputStream in = getAssets().open(assetSubDir + "/" + fileName);
+                         FileOutputStream out = new FileOutputStream(outFile)) {
                         byte[] buffer = new byte[8192];
                         int read;
                         while ((read = in.read(buffer)) != -1) {
@@ -60,14 +81,14 @@ public class OnboardingActivity extends Activity {
     private static void cleanProfileFile(File file) {
         if (file != null && file.exists()) {
             try {
-                java.util.List<String> lines = java.nio.file.Files.readAllLines(file.toPath());
-                java.util.List<String> filtered = new java.util.ArrayList<>();
+                List<String> lines = Files.readAllLines(file.toPath());
+                List<String> filtered = new ArrayList<>();
                 for (String line : lines) {
                     if (!line.contains("fallback run") && !line.contains("termux-bootstrap")) {
                         filtered.add(line);
                     }
                 }
-                java.nio.file.Files.write(file.toPath(), filtered);
+                Files.write(file.toPath(), filtered);
             } catch (Throwable ignored) {}
         }
     }
@@ -107,7 +128,7 @@ public class OnboardingActivity extends Activity {
 
     private TextView mStatusMessage;
     private TextView mInstallLogText;
-    private android.widget.ScrollView mInstallLogScroll;
+    private ScrollView mInstallLogScroll;
 
     private Button mBtnBack;
     private Button mBtnNext;
@@ -151,7 +172,7 @@ public class OnboardingActivity extends Activity {
 
             mStatusMessage = (TextView) findViewById(R.id.status_message);
             mInstallLogText = (TextView) findViewById(R.id.install_log_text);
-            mInstallLogScroll = (android.widget.ScrollView) findViewById(R.id.install_log_scroll);
+            mInstallLogScroll = (ScrollView) findViewById(R.id.install_log_scroll);
 
             mBtnBack = (Button) findViewById(R.id.btn_back);
             mBtnNext = (Button) findViewById(R.id.btn_next);
@@ -299,12 +320,12 @@ public class OnboardingActivity extends Activity {
                     boolean forceReinstall = !binariesExist;
                     Flow<InstallState> flow = libTermux.install(forceReinstall);
 
-                    kotlinx.coroutines.BuildersKt.runBlocking(
+                    BuildersKt.runBlocking(
                         Dispatchers.getIO(),
                         (scope, continuation) -> flow.collect(new FlowCollector<InstallState>() {
                             @Nullable
                             @Override
-                            public Object emit(InstallState state, @NonNull kotlin.coroutines.Continuation<? super kotlin.Unit> $completion) {
+                            public Object emit(InstallState state, @NonNull Continuation<? super Unit> $completion) {
                                 if (state instanceof InstallState.Downloading) {
                                     InstallState.Downloading d = (InstallState.Downloading) state;
                                     int pct = (int) (d.getProgress() * 100);
@@ -322,7 +343,7 @@ public class OnboardingActivity extends Activity {
                                     appendLog("[error] Bootstrap installation failed: " + f.getError());
                                     throw new RuntimeException("Bootstrap installation failed: " + f.getError());
                                 }
-                                return kotlin.Unit.INSTANCE;
+                                return Unit.INSTANCE;
                             }
                         }, continuation)
                     );
@@ -337,10 +358,10 @@ public class OnboardingActivity extends Activity {
                     secondStageDir.mkdirs();
                     File secondStageScript = new File(secondStageDir, "termux-bootstrap-second-stage.sh");
                     try {
-                        java.io.FileWriter writer = new java.io.FileWriter(secondStageScript);
+                        FileWriter writer = new FileWriter(secondStageScript);
                         writer.write("#!/system/bin/sh\nexit 0\n");
                         writer.close();
-                        android.system.Os.chmod(secondStageScript.getAbsolutePath(), 0755);
+                        Os.chmod(secondStageScript.getAbsolutePath(), 0755);
                     } catch (Throwable ignored) {}
 
                     File profileDBootstrap = new File(usrDir, "etc/profile.d/termux-bootstrap.sh");
@@ -392,7 +413,7 @@ public class OnboardingActivity extends Activity {
         if (usrDir == null || !usrDir.exists() || !usrDir.isDirectory()) return;
 
         // 1. Create symlinks /u -> usrDir and /h -> homeDir across all candidate app directories
-        java.util.List<File> targetDirs = new java.util.ArrayList<>();
+        List<File> targetDirs = new ArrayList<>();
         try { targetDirs.add(getDataDir()); } catch (Throwable ignored) {}
         targetDirs.add(new File("/data/data/com.vibestudio.app"));
         targetDirs.add(new File("/data/user/0/com.vibestudio.app"));
@@ -408,22 +429,22 @@ public class OnboardingActivity extends Activity {
             if (!dir.exists()) { try { dir.mkdirs(); } catch (Throwable ignored) {} }
             File uLink = new File(dir, "u");
             File hLink = new File(dir, "h");
-            try { android.system.Os.remove(uLink.getAbsolutePath()); } catch (Throwable ignored) {}
-            try { android.system.Os.remove(hLink.getAbsolutePath()); } catch (Throwable ignored) {}
-            try { android.system.Os.symlink(usrDir.getAbsolutePath(), uLink.getAbsolutePath()); } catch (Throwable ignored) {}
+            try { Os.remove(uLink.getAbsolutePath()); } catch (Throwable ignored) {}
+            try { Os.remove(hLink.getAbsolutePath()); } catch (Throwable ignored) {}
+            try { Os.symlink(usrDir.getAbsolutePath(), uLink.getAbsolutePath()); } catch (Throwable ignored) {}
             try {
                 if (homeDir != null) {
-                    android.system.Os.symlink(homeDir.getAbsolutePath(), hLink.getAbsolutePath());
+                    Os.symlink(homeDir.getAbsolutePath(), hLink.getAbsolutePath());
                 }
             } catch (Throwable ignored) {}
         }
         appendLog("[libtermux] Created symlinks pointing to " + usrDir.getAbsolutePath());
 
-        byte[] defaultUsrBytes = "/data/data/com.termux/files/usr".getBytes(java.nio.charset.StandardCharsets.UTF_8); // 31 bytes
-        byte[] targetUsrBytes  = "/data/data/com.vibestudio.app/u".getBytes(java.nio.charset.StandardCharsets.UTF_8);   // 31 bytes
+        byte[] defaultUsrBytes = "/data/data/com.termux/files/usr".getBytes(StandardCharsets.UTF_8); // 31 bytes
+        byte[] targetUsrBytes  = "/data/data/com.vibestudio.app/u".getBytes(StandardCharsets.UTF_8);   // 31 bytes
 
-        byte[] defaultHomeBytes = "/data/data/com.termux/files/home".getBytes(java.nio.charset.StandardCharsets.UTF_8); // 32 bytes
-        byte[] targetHomeBytes  = "/data/data/com.vibestudio.app/h ".getBytes(java.nio.charset.StandardCharsets.UTF_8);  // 32 bytes (with trailing nul)
+        byte[] defaultHomeBytes = "/data/data/com.termux/files/home".getBytes(StandardCharsets.UTF_8); // 32 bytes
+        byte[] targetHomeBytes  = "/data/data/com.vibestudio.app/h ".getBytes(StandardCharsets.UTF_8);  // 32 bytes (with trailing nul)
 
         int count = processDirectoryForTermuxPaths(usrDir, defaultUsrBytes, targetUsrBytes, defaultHomeBytes, targetHomeBytes, 0);
         LogViewerService.getInstance().i(TAG, "overrideSTermuxPaths completed. Overrode hardcoded termux paths in " + count + " files.");
@@ -503,7 +524,7 @@ public class OnboardingActivity extends Activity {
                     "Acquire::https::Verify-Peer \"false\";\n" +
                     "Acquire::ssl::Verify-Peer \"false\";\n";
 
-            java.nio.file.Files.write(aptConfFile.toPath(), aptConfContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Files.write(aptConfFile.toPath(), aptConfContent.getBytes(StandardCharsets.UTF_8));
             LogViewerService.getInstance().i(TAG, "Configured apt.conf at " + aptConfFile.getAbsolutePath());
 
             setupDefaultMirrors(usrDir);
@@ -517,7 +538,7 @@ public class OnboardingActivity extends Activity {
     private void fixSourcesListFiles(File usrDir) {
         try {
             File aptEtcDir = new File(usrDir, "etc/apt");
-            java.util.List<File> sourcesFiles = new java.util.ArrayList<>();
+            List<File> sourcesFiles = new ArrayList<>();
             File mainSources = new File(aptEtcDir, "sources.list");
             if (mainSources.exists()) sourcesFiles.add(mainSources);
 
@@ -534,7 +555,7 @@ public class OnboardingActivity extends Activity {
             }
 
             for (File f : sourcesFiles) {
-                String content = new String(java.nio.file.Files.readAllBytes(f.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                String content = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
                 String[] lines = content.split("\n");
                 StringBuilder sb = new StringBuilder();
                 boolean modified = false;
@@ -547,7 +568,7 @@ public class OnboardingActivity extends Activity {
                     sb.append(line).append("\n");
                 }
                 if (modified) {
-                    java.nio.file.Files.write(f.toPath(), sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    Files.write(f.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
                     LogViewerService.getInstance().i(TAG, "Updated sources file with trusted=yes: " + f.getName());
                 }
             }
@@ -564,19 +585,19 @@ public class OnboardingActivity extends Activity {
         int count = 0;
         for (File file : files) {
             try {
-                if (java.nio.file.Files.isSymbolicLink(file.toPath())) {
-                    java.nio.file.Path targetPath = java.nio.file.Files.readSymbolicLink(file.toPath());
+                if (Files.isSymbolicLink(file.toPath())) {
+                    Path targetPath = Files.readSymbolicLink(file.toPath());
                     String targetStr = targetPath.toString();
                     boolean modified = false;
-                    String defaultUsrStr = new String(matchUsr, java.nio.charset.StandardCharsets.UTF_8);
-                    String targetUsrStr = new String(replaceUsr, java.nio.charset.StandardCharsets.UTF_8);
+                    String defaultUsrStr = new String(matchUsr, StandardCharsets.UTF_8);
+                    String targetUsrStr = new String(replaceUsr, StandardCharsets.UTF_8);
                     if (targetStr.contains(defaultUsrStr)) {
                         targetStr = targetStr.replace(defaultUsrStr, targetUsrStr);
                         modified = true;
                     }
                     if (modified) {
-                        java.nio.file.Files.delete(file.toPath());
-                        java.nio.file.Files.createSymbolicLink(file.toPath(), java.nio.file.Paths.get(targetStr));
+                        Files.delete(file.toPath());
+                        Files.createSymbolicLink(file.toPath(), Paths.get(targetStr));
                         count++;
                     }
                     continue;
@@ -589,16 +610,16 @@ public class OnboardingActivity extends Activity {
                 count += processDirectoryForTermuxPaths(file, matchUsr, replaceUsr, matchHome, replaceHome, depth + 1);
             } else if (file.isFile() && file.canRead() && file.length() > 0 && file.length() < 10 * 1024 * 1024) {
                 try {
-                    byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                    byte[] bytes = Files.readAllBytes(file.toPath());
                     boolean modifiedUsr = replaceByteSequenceInPlace(bytes, matchUsr, replaceUsr);
                     boolean modifiedHome = replaceByteSequenceInPlace(bytes, matchHome, replaceHome);
 
                     if (modifiedUsr || modifiedHome) {
-                        java.nio.file.Files.write(file.toPath(), bytes);
+                        Files.write(file.toPath(), bytes);
                         if (file.getParentFile() != null) {
                             String parentName = file.getParentFile().getName();
                             if ("bin".equals(parentName) || "libexec".equals(parentName)) {
-                                try { android.system.Os.chmod(file.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                                try { Os.chmod(file.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                             }
                         }
                         count++;
@@ -647,18 +668,18 @@ public class OnboardingActivity extends Activity {
         File scriptFile = new File(usrDir, "tmp/vibestudio-bootstrap.sh");
         if (scriptFile.getParentFile() != null) { scriptFile.getParentFile().mkdirs(); }
         byte[] scriptBytes = null;
-        try (java.io.InputStream in = getAssets().open("vibestudio-bootstrap.sh")) {
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        try (InputStream in = getAssets().open("vibestudio-bootstrap.sh")) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024]; int read;
             while ((read = in.read(buffer)) != -1) { baos.write(buffer, 0, read); }
             scriptBytes = baos.toByteArray();
-        } catch (java.io.FileNotFoundException fnfe) {
+        } catch (FileNotFoundException fnfe) {
             appendLog("[warning] Asset vibestudio-bootstrap.sh not found, using default script...");
             String defaultScript = "#!/system/bin/sh\nset -x\n";
-            scriptBytes = defaultScript.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            scriptBytes = defaultScript.getBytes(StandardCharsets.UTF_8);
         }
-        try (java.io.FileOutputStream out = new java.io.FileOutputStream(scriptFile)) { out.write(scriptBytes); }
-        try { android.system.Os.chmod(scriptFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+        try (FileOutputStream out = new FileOutputStream(scriptFile)) { out.write(scriptBytes); }
+        try { Os.chmod(scriptFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
         File shBin = new File(usrDir, "bin/sh");
         String shellPath = shBin.exists() ? shBin.getAbsolutePath() : "/system/bin/sh";
         ProcessBuilder pb = new ProcessBuilder(shellPath, scriptFile.getAbsolutePath());
@@ -671,7 +692,7 @@ public class OnboardingActivity extends Activity {
         if (aptConfFile != null && aptConfFile.exists()) { pb.environment().put("APT_CONFIG", aptConfFile.getAbsolutePath()); }
         pb.directory(usrDir); pb.redirectErrorStream(true);
         Process process = pb.start();
-        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String l; while ((l = reader.readLine()) != null) { appendLog(l); }
         }
         int exitCode = process.waitFor();
@@ -695,17 +716,17 @@ public class OnboardingActivity extends Activity {
         File dpkgFile = new File(binDir, "dpkg");
         File dpkgRealFile = new File(binDir, "dpkg.real");
         if (dpkgFile.exists() && !dpkgRealFile.exists()) {
-            boolean isRegularFile = !java.nio.file.Files.isSymbolicLink(dpkgFile.toPath());
+            boolean isRegularFile = !Files.isSymbolicLink(dpkgFile.toPath());
             if (isRegularFile) {
                 if (dpkgFile.renameTo(dpkgRealFile)) {
-                    try { android.system.Os.chmod(dpkgRealFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                    try { Os.chmod(dpkgRealFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                     String wrapperContent = "#!/system/bin/sh\n" +
                             "PREFIX=\"${PREFIX:-" + usrDir.getAbsolutePath() + "}\"\n" +
                             "exec \"$PREFIX/bin/dpkg.real\" --root=\"$PREFIX\" --admindir=\"$PREFIX/var/lib/dpkg\" --force-script-chrootless --force-unsafe-io \"$@\"\n";
-                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(dpkgFile)) {
-                        out.write(wrapperContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    try (FileOutputStream out = new FileOutputStream(dpkgFile)) {
+                        out.write(wrapperContent.getBytes(StandardCharsets.UTF_8));
                     } catch (Throwable ignored) {}
-                    try { android.system.Os.chmod(dpkgFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                    try { Os.chmod(dpkgFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                     appendLog("[libtermux] Created dpkg wrapper script pointing to --root=" + usrDir.getAbsolutePath());
                 }
             }
@@ -715,7 +736,7 @@ public class OnboardingActivity extends Activity {
         File symlinksFile = new File(usrDir, "SYMLINKS.txt");
         if (symlinksFile.exists()) {
             appendLog("[libtermux] Processing SYMLINKS.txt with POSIX symlink...");
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(symlinksFile))) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(symlinksFile))) {
                 String line;
                 int count = 0;
                 while ((line = reader.readLine()) != null) {
@@ -736,15 +757,15 @@ public class OnboardingActivity extends Activity {
                         File parent = linkFile.getParentFile();
                         if (parent != null && !parent.exists()) parent.mkdirs();
 
-                        try { android.system.Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
+                        try { Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
                         linkFile.delete();
 
                         try {
-                            android.system.Os.symlink(target, linkFile.getAbsolutePath());
-                            try { android.system.Os.chmod(linkFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                            Os.symlink(target, linkFile.getAbsolutePath());
+                            try { Os.chmod(linkFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                             count++;
                         } catch (Throwable t) {
-                            android.util.Log.w("OnboardingActivity", "Failed symlink: " + linkFile + " -> " + target + ": " + t.getMessage());
+                            Log.w("OnboardingActivity", "Failed symlink: " + linkFile + " -> " + target + ": " + t.getMessage());
                         }
                     }
                 }
@@ -788,13 +809,13 @@ public class OnboardingActivity extends Activity {
     private boolean ensureExecutableTool(File binDir, String toolName, String... fallbackTargets) {
         File toolFile = new File(binDir, toolName);
         if (toolFile.exists()) {
-            try { android.system.Os.chmod(toolFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+            try { Os.chmod(toolFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
         }
         if (toolFile.exists() && toolFile.canExecute()) {
             return true;
         }
 
-        try { android.system.Os.remove(toolFile.getAbsolutePath()); } catch (Throwable ignored) {}
+        try { Os.remove(toolFile.getAbsolutePath()); } catch (Throwable ignored) {}
         toolFile.delete();
 
         for (String targetName : fallbackTargets) {
@@ -803,10 +824,10 @@ public class OnboardingActivity extends Activity {
                 targetFile = new File(binDir.getParentFile(), targetName);
             }
             if (targetFile.exists()) {
-                try { android.system.Os.chmod(targetFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                try { Os.chmod(targetFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                 if (targetFile.canExecute()) {
                     createSymlink(binDir, toolName, targetName);
-                    try { android.system.Os.chmod(toolFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                    try { Os.chmod(toolFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                     if (toolFile.exists() && toolFile.canExecute()) {
                         appendLog("[libtermux] Fixed tool " + toolName + " -> " + targetName);
                         return true;
@@ -826,7 +847,7 @@ public class OnboardingActivity extends Activity {
                 makeDirectoryExecutable(f);
             } else {
                 try {
-                    android.system.Os.chmod(f.getAbsolutePath(), 0755);
+                    Os.chmod(f.getAbsolutePath(), 0755);
                 } catch (Throwable ignored) {}
             }
         }
@@ -842,12 +863,12 @@ public class OnboardingActivity extends Activity {
     private void createSymlink(File dir, String symlinkName, String target) {
         File linkFile = new File(dir, symlinkName);
         try {
-            try { android.system.Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
+            try { Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
             linkFile.delete();
-            android.system.Os.symlink(target, linkFile.getAbsolutePath());
-            android.system.Os.chmod(linkFile.getAbsolutePath(), 0755);
+            Os.symlink(target, linkFile.getAbsolutePath());
+            Os.chmod(linkFile.getAbsolutePath(), 0755);
         } catch (Throwable t) {
-            android.util.Log.w("OnboardingActivity", "Failed to create symlink " + symlinkName + " -> " + target + ": " + t.getMessage());
+            Log.w("OnboardingActivity", "Failed to create symlink " + symlinkName + " -> " + target + ": " + t.getMessage());
         }
     }
 
@@ -860,7 +881,7 @@ public class OnboardingActivity extends Activity {
             boolean isExecDir = "bin".equals(parentName) || "libexec".equals(parentName) || "applets".equals(parentName) || "methods".equals(parentName);
             boolean isExec = isDir || isExecDir || file.canExecute();
             try {
-                android.system.Os.chmod(file.getAbsolutePath(), isExec ? 0755 : 0644);
+                Os.chmod(file.getAbsolutePath(), isExec ? 0755 : 0644);
             } catch (Throwable ignored) {}
             if (isDir) {
                 File[] children = file.listFiles();
@@ -880,7 +901,7 @@ public class OnboardingActivity extends Activity {
             if (defaultMirror.exists()) {
                 try {
                     if (chosenMirrors.exists() || chosenMirrors.isAbsolute()) { chosenMirrors.delete(); }
-                    android.system.Os.symlink(defaultMirror.getAbsolutePath(), chosenMirrors.getAbsolutePath());
+                    Os.symlink(defaultMirror.getAbsolutePath(), chosenMirrors.getAbsolutePath());
                     LogViewerService.getInstance().i(TAG, "Linked chosen_mirrors to default mirror");
                 } catch (Throwable t) {
                     LogViewerService.getInstance().w(TAG, "Failed to symlink chosen_mirrors", t);
@@ -896,7 +917,7 @@ public class OnboardingActivity extends Activity {
     private boolean replaceBytesInFile(File file, byte[] pattern, byte[] replacement) {
         if (pattern == null || replacement == null || pattern.length != replacement.length) return false;
         try {
-            byte[] data = java.nio.file.Files.readAllBytes(file.toPath());
+            byte[] data = Files.readAllBytes(file.toPath());
             boolean modified = false;
             for (int i = 0; i <= data.length - pattern.length; i++) {
                 boolean match = true;
@@ -910,7 +931,7 @@ public class OnboardingActivity extends Activity {
                 }
             }
             if (modified) {
-                java.nio.file.Files.write(file.toPath(), data);
+                Files.write(file.toPath(), data);
                 return true;
             }
         } catch (Exception ignored) {}
