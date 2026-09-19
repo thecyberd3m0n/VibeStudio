@@ -314,16 +314,36 @@ public class OnboardingActivity extends Activity {
         }).start();
     }
 
-    private void overrideSTermuxPaths(File usrDir, File homeDir) {
+            private void overrideSTermuxPaths(File usrDir, File homeDir) {
         if (usrDir == null || !usrDir.exists() || !usrDir.isDirectory()) return;
 
-        String targetUsrPrefix = usrDir.getAbsolutePath();
-        String targetHomePrefix = (homeDir != null) ? homeDir.getAbsolutePath() : targetUsrPrefix.replace("/usr", "/home");
+        // 1. Create symlinks /data/data/com.vibestudio.app/u -> usrDir and /h -> homeDir in app data dir
+        try {
+            File appDataDir = getDataDir();
+            if (appDataDir != null) {
+                File uLink = new File(appDataDir, "u");
+                File hLink = new File(appDataDir, "h");
+                try { android.system.Os.remove(uLink.getAbsolutePath()); } catch (Throwable ignored) {}
+                try { android.system.Os.remove(hLink.getAbsolutePath()); } catch (Throwable ignored) {}
+                try { android.system.Os.symlink(usrDir.getAbsolutePath(), uLink.getAbsolutePath()); } catch (Throwable ignored) {}
+                try {
+                    if (homeDir != null) {
+                        android.system.Os.symlink(homeDir.getAbsolutePath(), hLink.getAbsolutePath());
+                    }
+                } catch (Throwable ignored) {}
+                appendLog("[libtermux] Created symlink " + uLink.getAbsolutePath() + " -> " + usrDir.getAbsolutePath());
+            }
+        } catch (Throwable t) {
+            LogViewerService.getInstance().w(TAG, "Failed creating u/h symlinks: " + t.getMessage());
+        }
 
-        String defaultTermuxUsr = "/data/data/com.termux/files/usr";
-        String defaultTermuxHome = "/data/data/com.termux/files/home";
+        byte[] defaultUsrBytes = "/data/data/com.termux/files/usr".getBytes(java.nio.charset.StandardCharsets.UTF_8); // 31 bytes
+        byte[] targetUsrBytes  = "/data/data/com.vibestudio.app/u".getBytes(java.nio.charset.StandardCharsets.UTF_8);   // 31 bytes
 
-        int count = processDirectoryForTermuxPaths(usrDir, targetUsrPrefix, defaultTermuxUsr, targetHomePrefix, defaultTermuxHome, 0);
+        byte[] defaultHomeBytes = "/data/data/com.termux/files/home".getBytes(java.nio.charset.StandardCharsets.UTF_8); // 32 bytes
+        byte[] targetHomeBytes  = "/data/data/com.vibestudio.app/h ".getBytes(java.nio.charset.StandardCharsets.UTF_8);  // 32 bytes (with trailing nul)
+
+        int count = processDirectoryForTermuxPaths(usrDir, defaultUsrBytes, targetUsrBytes, defaultHomeBytes, targetHomeBytes, 0);
         LogViewerService.getInstance().i(TAG, "overrideSTermuxPaths completed. Overrode hardcoded termux paths in " + count + " files.");
 
         setupAptEnvironment(usrDir);
@@ -454,8 +474,8 @@ public class OnboardingActivity extends Activity {
         }
     }
 
-        private int processDirectoryForTermuxPaths(File dir, String targetUsr, String defaultUsr, String targetHome, String defaultHome, int depth) {
-        if (depth > 6) return 0;
+            private int processDirectoryForTermuxPaths(File dir, byte[] matchUsr, byte[] replaceUsr, byte[] matchHome, byte[] replaceHome, int depth) {
+        if (depth > 8 || dir == null) return 0;
         File[] files = dir.listFiles();
         if (files == null) return 0;
 
@@ -466,12 +486,10 @@ public class OnboardingActivity extends Activity {
                     java.nio.file.Path targetPath = java.nio.file.Files.readSymbolicLink(file.toPath());
                     String targetStr = targetPath.toString();
                     boolean modified = false;
-                    if (targetStr.contains(defaultUsr)) {
-                        targetStr = targetStr.replace(defaultUsr, targetUsr);
-                        modified = true;
-                    }
-                    if (targetStr.contains(defaultHome)) {
-                        targetStr = targetStr.replace(defaultHome, targetHome);
+                    String defaultUsrStr = new String(matchUsr, java.nio.charset.StandardCharsets.UTF_8);
+                    String targetUsrStr = new String(replaceUsr, java.nio.charset.StandardCharsets.UTF_8);
+                    if (targetStr.contains(defaultUsrStr)) {
+                        targetStr = targetStr.replace(defaultUsrStr, targetUsrStr);
                         modified = true;
                     }
                     if (modified) {
@@ -482,51 +500,26 @@ public class OnboardingActivity extends Activity {
                     continue;
                 }
             } catch (Exception e) {
-                LogViewerService.getInstance().w(TAG, "Failed to update symlink for " + file.getName(), e);
                 continue;
             }
 
             if (file.isDirectory()) {
-                count += processDirectoryForTermuxPaths(file, targetUsr, defaultUsr, targetHome, defaultHome, depth + 1);
-            } else if (file.isFile() && file.canRead() && file.length() < 2 * 1024 * 1024) {
+                count += processDirectoryForTermuxPaths(file, matchUsr, replaceUsr, matchHome, replaceHome, depth + 1);
+            } else if (file.isFile() && file.canRead() && file.length() > 0 && file.length() < 10 * 1024 * 1024) {
                 try {
                     byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
-                    boolean isCandidate = false;
-                    if (bytes.length > 2 && bytes[0] == '#' && bytes[1] == '!') {
-                        isCandidate = true;
-                    } else if (bytes.length > 0) {
-                        int checkLen = Math.min(bytes.length, 128);
-                        isCandidate = true;
-                        for (int i = 0; i < checkLen; i++) {
-                            if (bytes[i] == 0) {
-                                isCandidate = false;
-                                break;
+                    boolean modifiedUsr = replaceByteSequenceInPlace(bytes, matchUsr, replaceUsr);
+                    boolean modifiedHome = replaceByteSequenceInPlace(bytes, matchHome, replaceHome);
+
+                    if (modifiedUsr || modifiedHome) {
+                        java.nio.file.Files.write(file.toPath(), bytes);
+                        if (file.getParentFile() != null) {
+                            String parentName = file.getParentFile().getName();
+                            if ("bin".equals(parentName) || "libexec".equals(parentName)) {
+                                try { android.system.Os.chmod(file.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                             }
                         }
-                    }
-
-                    if (isCandidate) {
-                        String content = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
-                        boolean modified = false;
-                        if (content.contains(defaultUsr)) {
-                            content = content.replace(defaultUsr, targetUsr);
-                            modified = true;
-                        }
-                        if (content.contains(defaultHome)) {
-                            content = content.replace(defaultHome, targetHome);
-                            modified = true;
-                        }
-
-                        if (modified) {
-                            java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                            if (file.getParentFile() != null) {
-                                String parentName = file.getParentFile().getName();
-                                if ("bin".equals(parentName) || "libexec".equals(parentName) || (bytes.length > 2 && bytes[0] == '#' && bytes[1] == '!')) {
-                                    file.setExecutable(true, false);
-                                }
-                            }
-                            count++;
-                        }
+                        count++;
                     }
                 } catch (Exception e) {
                     LogViewerService.getInstance().w(TAG, "Failed to process path for " + file.getName(), e);
@@ -534,6 +527,31 @@ public class OnboardingActivity extends Activity {
             }
         }
         return count;
+    }
+
+    private boolean replaceByteSequenceInPlace(byte[] src, byte[] match, byte[] replace) {
+        if (src == null || match == null || replace == null || match.length != replace.length || src.length < match.length) {
+            return false;
+        }
+        boolean modified = false;
+        int maxIndex = src.length - match.length;
+        for (int i = 0; i <= maxIndex; i++) {
+            boolean isMatch = true;
+            for (int j = 0; j < match.length; j++) {
+                if (src[i + j] != match[j]) {
+                    isMatch = false;
+                    break;
+                }
+            }
+            if (isMatch) {
+                for (int j = 0; j < replace.length; j++) {
+                    src[i + j] = replace[j];
+                }
+                i += match.length - 1;
+                modified = true;
+            }
+        }
+        return modified;
     }
 
     private void navigateToMain() {
@@ -579,7 +597,7 @@ public class OnboardingActivity extends Activity {
         if (exitCode != 0) { throw new RuntimeException("vibestudio-bootstrap.sh failed with exit code " + exitCode); }
     }
 
-        private void setupSymlinksAndPermissions(File usrDir) {
+    private void setupSymlinksAndPermissions(File usrDir) {
         if (usrDir == null || !usrDir.exists()) return;
         File binDir = new File(usrDir, "bin");
         if (!binDir.exists()) binDir.mkdirs();
@@ -591,7 +609,27 @@ public class OnboardingActivity extends Activity {
         makeDirectoryExecutable(new File(usrDir, "lib/apt/solvers"));
         makeDirectoryExecutable(new File(usrDir, "lib/apt/planners"));
 
-        // 2. Process SYMLINKS.txt if present
+        // 2. Wrap dpkg binary to force --root and --admindir to VibeStudio prefix
+        File dpkgFile = new File(binDir, "dpkg");
+        File dpkgRealFile = new File(binDir, "dpkg.real");
+        if (dpkgFile.exists() && !dpkgRealFile.exists()) {
+            boolean isRegularFile = !java.nio.file.Files.isSymbolicLink(dpkgFile.toPath());
+            if (isRegularFile) {
+                if (dpkgFile.renameTo(dpkgRealFile)) {
+                    try { android.system.Os.chmod(dpkgRealFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                    String wrapperContent = "#!/system/bin/sh\n" +
+                            "PREFIX=\"${PREFIX:-" + usrDir.getAbsolutePath() + "}\"\n" +
+                            "exec \"$PREFIX/bin/dpkg.real\" --root=\"$PREFIX\" --admindir=\"$PREFIX/var/lib/dpkg\" \"$@\"\n";
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(dpkgFile)) {
+                        out.write(wrapperContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    } catch (Throwable ignored) {}
+                    try { android.system.Os.chmod(dpkgFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                    appendLog("[libtermux] Created dpkg wrapper script pointing to --root=" + usrDir.getAbsolutePath());
+                }
+            }
+        }
+
+        // 3. Process SYMLINKS.txt if present
         File symlinksFile = new File(usrDir, "SYMLINKS.txt");
         if (symlinksFile.exists()) {
             appendLog("[libtermux] Processing SYMLINKS.txt with POSIX symlink...");
@@ -634,15 +672,15 @@ public class OnboardingActivity extends Activity {
             }
         }
 
-        // 3. Guarantee all 6 required dpkg binaries are executable
+        // 4. Guarantee all 6 required dpkg binaries are executable
         ensureExecutableTool(binDir, "sh", "dash", "bash");
         ensureExecutableTool(binDir, "rm", "coreutils", "busybox");
         ensureExecutableTool(binDir, "tar", "busybox", "coreutils");
         ensureExecutableTool(binDir, "diff", "busybox", "coreutils");
-        ensureExecutableTool(binDir, "dpkg-deb", "dpkg", "busybox");
-        ensureExecutableTool(binDir, "start-stop-daemon", "dpkg", "busybox");
+        ensureExecutableTool(binDir, "dpkg-deb", "dpkg.real", "dpkg", "busybox");
+        ensureExecutableTool(binDir, "start-stop-daemon", "dpkg.real", "dpkg", "busybox");
 
-        // 4. Ensure other common utility tools
+        // 5. Ensure other common utility tools
         String[] commonTools = new String[]{
             "cat", "ls", "cp", "mv", "ln", "chmod", "mkdir", "echo", "touch", "chown", "shred"
         };
@@ -650,12 +688,12 @@ public class OnboardingActivity extends Activity {
             ensureExecutableTool(binDir, tool, "coreutils", "busybox");
         }
 
-        // 5. Re-run permission check on executable directories
+        // 6. Re-run permission check on executable directories
         makeDirectoryExecutable(new File(usrDir, "bin"));
         makeDirectoryExecutable(new File(usrDir, "libexec"));
         makeDirectoryExecutable(new File(usrDir, "lib/apt/methods"));
 
-        // 6. Verify and log status of all 6 expected dpkg binaries
+        // 7. Verify and log status of all 6 expected dpkg binaries
         String[] required = new String[]{"sh", "rm", "tar", "diff", "dpkg-deb", "start-stop-daemon"};
         for (String req : required) {
             File reqFile = new File(binDir, req);
