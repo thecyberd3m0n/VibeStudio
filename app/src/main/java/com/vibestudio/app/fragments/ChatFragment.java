@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -17,78 +18,110 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-public class ChatFragment extends Fragment {
+import com.vibestudio.app.service.ChatService;
+
+import java.util.List;
+
+public class ChatFragment extends Fragment implements ChatService.OnChatMessageListener {
 
     private static final int MATCH_PARENT = -1;
     private static final int WRAP_CONTENT = -2;
 
+    private ScrollView mChatScroll;
+    private LinearLayout mChatContainer;
+    private EditText mMsgInput;
+    private Button mBtnSend;
+    private ProgressBar mProgressBar;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        Context context = getContext();
+        final Context context = getContext();
         if (context == null) return null;
 
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(16, 16, 16, 16);
 
-        final ScrollView chatScroll = new ScrollView(context);
-        final LinearLayout chatContainer = new LinearLayout(context);
-        chatContainer.setOrientation(LinearLayout.VERTICAL);
-        chatScroll.addView(chatContainer);
+        mChatScroll = new ScrollView(context);
+        mChatContainer = new LinearLayout(context);
+        mChatContainer.setOrientation(LinearLayout.VERTICAL);
+        mChatScroll.addView(mChatContainer);
 
         LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(MATCH_PARENT, 0, 1.0f);
-        chatScroll.setLayoutParams(scrollParams);
+        mChatScroll.setLayoutParams(scrollParams);
 
-        addChatMessage(context, chatContainer, "Assistant", "Hello! Welcome to VibeStudio. How can I assist with your project today?", false);
-        addChatMessage(context, chatContainer, "User", "Can you build a Material Dark Android app?", true);
-        addChatMessage(context, chatContainer, "Assistant", "Absolutely! VibeStudio is configured with a Material Dark theme and drawer navigation.", false);
+        mProgressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
+        mProgressBar.setIndeterminate(true);
+        mProgressBar.setVisibility(View.GONE);
 
         LinearLayout inputRow = new LinearLayout(context);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
         inputRow.setPadding(0, 12, 0, 0);
 
-        final EditText msgInput = new EditText(context);
-        msgInput.setHint("Message VibeStudio...");
-        msgInput.setHintTextColor(Color.parseColor("#666666"));
-        msgInput.setTextColor(Color.parseColor("#FFFFFF"));
-        msgInput.setBackgroundColor(Color.parseColor("#1E1E24"));
-        msgInput.setPadding(16, 16, 16, 16);
+        mMsgInput = new EditText(context);
+        mMsgInput.setHint("Message VibeStudio...");
+        mMsgInput.setHintTextColor(Color.parseColor("#666666"));
+        mMsgInput.setTextColor(Color.parseColor("#FFFFFF"));
+        mMsgInput.setBackgroundColor(Color.parseColor("#1E1E24"));
+        mMsgInput.setPadding(16, 16, 16, 16);
 
         LinearLayout.LayoutParams inParams = new LinearLayout.LayoutParams(0, WRAP_CONTENT, 1.0f);
-        msgInput.setLayoutParams(inParams);
+        mMsgInput.setLayoutParams(inParams);
 
-        Button btnSend = new Button(context);
-        btnSend.setText("SEND");
-        btnSend.setTextColor(Color.parseColor("#121212"));
-        btnSend.setBackgroundColor(Color.parseColor("#03DAC6"));
+        mBtnSend = new Button(context);
+        mBtnSend.setText("SEND");
+        mBtnSend.setTextColor(Color.parseColor("#121212"));
+        mBtnSend.setBackgroundColor(Color.parseColor("#03DAC6"));
 
-        btnSend.setOnClickListener(new View.OnClickListener() {
+        mBtnSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String text = msgInput.getText().toString();
-                if (text.length() > 0) {
-                    addChatMessage(context, chatContainer, "User", text, true);
-                    msgInput.setText("");
-                    addChatMessage(context, chatContainer, "Assistant", "Received: " + text, false);
-                    chatScroll.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            chatScroll.fullScroll(ScrollView.FOCUS_DOWN);
-                        }
-                    });
+                String text = mMsgInput.getText().toString();
+                if (text.trim().length() > 0) {
+                    mMsgInput.setText("");
+                    ChatService.getInstance().sendMessage(context, text);
                 }
             }
         });
 
-        inputRow.addView(msgInput);
-        inputRow.addView(btnSend);
+        inputRow.addView(mMsgInput);
+        inputRow.addView(mBtnSend);
 
-        layout.addView(chatScroll);
+        layout.addView(mChatScroll);
+        layout.addView(mProgressBar);
         layout.addView(inputRow);
+
+        ChatService.getInstance().addListener(this);
+
+        // Render current chat history from ChatService
+        renderChatHistory(context);
+
         return layout;
     }
 
-    private void addChatMessage(Context context, LinearLayout container, String sender, String text, boolean isUser) {
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        ChatService.getInstance().removeListener(this);
+    }
+
+    private void renderChatHistory(Context context) {
+        if (mChatContainer == null) return;
+        mChatContainer.removeAllViews();
+
+        List<ChatService.ChatMessage> history = ChatService.getInstance().getMessages();
+        for (ChatService.ChatMessage msg : history) {
+            addChatMessageUI(context, msg);
+        }
+
+        updateLoadingUI(ChatService.getInstance().isLoading());
+        scrollToBottom();
+    }
+
+    private void addChatMessageUI(Context context, ChatService.ChatMessage msg) {
+        if (context == null || mChatContainer == null) return;
+
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(18, 14, 18, 14);
@@ -96,7 +129,7 @@ public class ChatFragment extends Fragment {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
         params.setMargins(0, 0, 0, 16);
 
-        if (isUser) {
+        if (msg.isUser()) {
             params.gravity = android.view.Gravity.RIGHT;
             card.setBackgroundColor(Color.parseColor("#3700B3"));
         } else {
@@ -106,19 +139,58 @@ public class ChatFragment extends Fragment {
         card.setLayoutParams(params);
 
         TextView tvSender = new TextView(context);
-        tvSender.setText(sender);
-        tvSender.setTextColor(isUser ? Color.parseColor("#03DAC6") : Color.parseColor("#BB86FC"));
+        tvSender.setText(msg.getSender());
+        tvSender.setTextColor(msg.isUser() ? Color.parseColor("#03DAC6") : Color.parseColor("#BB86FC"));
         tvSender.setTextSize(12);
         tvSender.setTypeface(null, Typeface.BOLD);
+        tvSender.setTextIsSelectable(true);
 
         TextView tvText = new TextView(context);
-        tvText.setText(text);
+        tvText.setText(msg.getText());
         tvText.setTextColor(Color.parseColor("#FFFFFF"));
         tvText.setTextSize(14);
         tvText.setPadding(0, 4, 0, 0);
+        tvText.setTextIsSelectable(true);
 
         card.addView(tvSender);
         card.addView(tvText);
-        container.addView(card);
+        mChatContainer.addView(card);
+    }
+
+    private void updateLoadingUI(boolean isLoading) {
+        if (mProgressBar != null) {
+            mProgressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (mBtnSend != null) {
+            mBtnSend.setEnabled(!isLoading);
+        }
+        if (mMsgInput != null) {
+            mMsgInput.setEnabled(!isLoading);
+        }
+    }
+
+    private void scrollToBottom() {
+        if (mChatScroll != null) {
+            mChatScroll.post(new Runnable() {
+                @Override
+                public void run() {
+                    mChatScroll.fullScroll(ScrollView.FOCUS_DOWN);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onMessageAdded(ChatService.ChatMessage message) {
+        Context context = getContext();
+        if (context != null) {
+            addChatMessageUI(context, message);
+            scrollToBottom();
+        }
+    }
+
+    @Override
+    public void onResponseLoading(boolean isLoading) {
+        updateLoadingUI(isLoading);
     }
 }

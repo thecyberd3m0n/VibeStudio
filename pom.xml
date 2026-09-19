@@ -82,5 +82,10 @@
             <artifactId>kotlinx-serialization-json-jvm</artifactId>
             <version>1.6.3</version>
         </dependency>
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>2.0.0</version>
+        </dependency>
     </dependencies>
 </project>

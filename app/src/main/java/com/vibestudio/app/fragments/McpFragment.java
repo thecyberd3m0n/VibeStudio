@@ -15,10 +15,17 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-public class McpFragment extends Fragment {
+import com.vibestudio.app.mcp.McpClientManager;
+import com.vibestudio.app.service.McpService;
+
+import java.util.List;
+
+public class McpFragment extends Fragment implements McpService.OnMcpServerChangeListener {
 
     private static final int MATCH_PARENT = -1;
     private static final int WRAP_CONTENT = -2;
+
+    private LinearLayout mainContainer;
 
     @Nullable
     @Override
@@ -27,28 +34,71 @@ public class McpFragment extends Fragment {
         if (context == null) return null;
 
         ScrollView scrollView = new ScrollView(context);
-        LinearLayout mainContainer = new LinearLayout(context);
+        mainContainer = new LinearLayout(context);
         mainContainer.setOrientation(LinearLayout.VERTICAL);
+        scrollView.addView(mainContainer);
 
-        String[][] servers = {
-            {"FileSystem Server", "Status: Connected • 12 tools active", "#03DAC6"},
-            {"Puppeteer Server", "Status: Connected • Browser automation enabled", "#03DAC6"},
-            {"SQLite Server", "Status: Idle • Local database access", "#FFB74D"},
-            {"GitHub API Server", "Status: Disconnected", "#CF6679"}
-        };
+        renderServers();
+        return scrollView;
+    }
 
-        for (String[] s : servers) {
+    @Override
+    public void onStart() {
+        super.onStart();
+        McpService service = McpService.getInstance();
+        if (service != null) {
+            service.addListener(this);
+            renderServers();
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        McpService service = McpService.getInstance();
+        if (service != null) {
+            service.removeListener(this);
+        }
+    }
+
+    @Override
+    public void onServerListUpdated(List<McpClientManager.McpServerInfo> servers) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(this::renderServers);
+        }
+    }
+
+    private void renderServers() {
+        if (mainContainer == null) return;
+        Context context = getContext();
+        if (context == null) return;
+
+        mainContainer.removeAllViews();
+
+        McpService service = McpService.getInstance();
+        List<McpClientManager.McpServerInfo> servers = service != null ? service.getConfiguredServers() : null;
+
+        if (servers == null || servers.isEmpty()) {
+            TextView emptyView = new TextView(context);
+            emptyView.setText("No MCP servers available.");
+            emptyView.setTextColor(Color.parseColor("#888888"));
+            emptyView.setPadding(32, 32, 32, 32);
+            mainContainer.addView(emptyView);
+            return;
+        }
+
+        for (McpClientManager.McpServerInfo server : servers) {
             LinearLayout card = createCard(context);
 
             TextView name = new TextView(context);
-            name.setText("MCP: " + s[0]);
+            name.setText("MCP: " + server.getName());
             name.setTextColor(Color.parseColor("#FFFFFF"));
             name.setTextSize(16);
             name.setTypeface(null, Typeface.BOLD);
 
             TextView info = new TextView(context);
-            info.setText(s[1]);
-            info.setTextColor(Color.parseColor(s[2]));
+            info.setText(server.getStatus());
+            info.setTextColor(Color.parseColor(server.getColor()));
             info.setTextSize(14);
             info.setPadding(0, 8, 0, 0);
 
@@ -56,19 +106,16 @@ public class McpFragment extends Fragment {
             card.addView(info);
             mainContainer.addView(card);
         }
-
-        scrollView.addView(mainContainer);
-        return scrollView;
     }
 
     private LinearLayout createCard(Context context) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#1E1E24"));
-        card.setPadding(24, 24, 24, 24);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
-        params.setMargins(0, 0, 0, 20);
+        params.setMargins(16, 16, 16, 0);
         card.setLayoutParams(params);
+        card.setPadding(24, 24, 24, 24);
+        card.setBackgroundColor(Color.parseColor("#1E1E1E"));
         return card;
     }
 }
