@@ -1,4 +1,6 @@
 .gradle/
+.cxx/
+**/.cxx/
 build/
 bin/
 obj/
@@ -10,6 +12,9 @@ libs/*.aar
 libs/*.zip
 libs/deps/
 build_termux.sh
+
+# Native library build outputs
+app/src/main/jniLibs/
 
 # Generated R sources and AAPT2 compilation outputs
 gen_r/
