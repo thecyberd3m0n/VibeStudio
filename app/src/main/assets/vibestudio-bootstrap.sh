@@ -26,6 +26,18 @@ if [ -x "$PREFIX/bin/pkg" ]; then
     sed -i "s|/data/data/com.termux/files/usr|$PREFIX|g" "$PREFIX/bin/pkg" 2>/dev/null || true
 fi
 
+
+# Neutralize termux-bootstrap second-stage triggers
+if [ -d "$PREFIX/etc/termux/termux-bootstrap" ]; then
+    mkdir -p "$PREFIX/etc/termux/termux-bootstrap/second-stage"
+    printf "#!/system/bin/sh\nexit 0\n" > "$PREFIX/etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh"
+    chmod 755 "$PREFIX/etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh"
+fi
+
+if [ -f "$PREFIX/etc/profile.d/termux-bootstrap.sh" ]; then
+    rm -f "$PREFIX/etc/profile.d/termux-bootstrap.sh"
+fi
+
 echo "[vibestudio-bootstrap] Checking available package managers..."
 # Link default mirror to chosen_mirrors
 if [ -f "$PREFIX/etc/termux/mirrors/default" ]; then

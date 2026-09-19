@@ -292,9 +292,19 @@ public class OnboardingActivity extends Activity {
                     fixPermissionsRecursively(usrDir);
                     runBootstrapScript(usrDir, homeDir, aptConfFile);
 
-                    File secondStageDir = new File(usrDir, "etc/termux/termux-bootstrap");
-                    if (secondStageDir.exists()) {
-                        deleteRecursive(secondStageDir);
+                    File secondStageDir = new File(usrDir, "etc/termux/termux-bootstrap/second-stage");
+                    secondStageDir.mkdirs();
+                    File secondStageScript = new File(secondStageDir, "termux-bootstrap-second-stage.sh");
+                    try {
+                        java.io.FileWriter writer = new java.io.FileWriter(secondStageScript);
+                        writer.write("#!/system/bin/sh\nexit 0\n");
+                        writer.close();
+                        android.system.Os.chmod(secondStageScript.getAbsolutePath(), 0755);
+                    } catch (Throwable ignored) {}
+
+                    File profileDBootstrap = new File(usrDir, "etc/profile.d/termux-bootstrap.sh");
+                    if (profileDBootstrap.exists()) {
+                        profileDBootstrap.delete();
                     }
 
                     appendLog("[libtermux] Storing LibTermux settings in database...");
