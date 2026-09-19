@@ -117,34 +117,6 @@ d8 --min-api 24 --lib libs/android.jar --output bin/ bin/app_classes.jar $DEX_LI
 
 echo "=== Adding classes.dex to APK ==="
 # Add native libraries (e.g. libtermux.so) into lib/ in the APK
-if [ -f "app/src/main/cpp/termux.cpp" ] && command -v clang++ >/dev/null 2>&1; then
-    echo "=== Compiling native libtermux.so with clang++ ==="
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        aarch64) ABI="arm64-v8a" ;;
-        armv7l|armv8l) ABI="armeabi-v7a" ;;
-        x86_64) ABI="x86_64" ;;
-        i686|x86) ABI="x86" ;;
-        *) ABI="arm64-v8a" ;;
-    esac
-    mkdir -p "app/src/main/jniLibs/$ABI"
-    clang++ -shared -fPIC -O2 -std=c++17 -static-libstdc++ \
-        app/src/main/cpp/termux.cpp \
-        -llog -lpty \
-        -o "app/src/main/jniLibs/$ABI/libtermux.so" 2>/dev/null || \
-    clang++ -shared -fPIC -O2 -std=c++17 -static-libstdc++ \
-        app/src/main/cpp/termux.cpp \
-        -llog \
-        -o "app/src/main/jniLibs/$ABI/libtermux.so" || true
-
-    # Bundle libc++_shared.so if present in Termux environment
-    PREFIX_LIB="${PREFIX:-/data/data/com.termux/files/usr}/lib/libc++_shared.so"
-    if [ -f "$PREFIX_LIB" ]; then
-        echo "=== Bundling libc++_shared.so from Termux prefix ==="
-        cp "$PREFIX_LIB" "app/src/main/jniLibs/$ABI/"
-    fi
-fi
-
 if [ -d "app/src/main/jniLibs" ]; then
     echo "=== Adding native libraries to APK ==="
     mkdir -p lib

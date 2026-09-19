@@ -13,9 +13,6 @@ libs/*.zip
 libs/deps/
 build_termux.sh
 
-# Native library build outputs
-app/src/main/jniLibs/
-
 # Generated R sources and AAPT2 compilation outputs
 gen_r/
 compiled_res/
