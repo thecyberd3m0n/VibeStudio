@@ -86,6 +86,9 @@ done
 rm -f app/src/main/java/com/vibestudio/app/R.java
 
 AAPT2_LINK_CMD="aapt2 link -o bin/app.unsigned.apk -I libs/android.jar --manifest app/src/main/AndroidManifest.xml --java gen_r --auto-add-overlay"
+if [ -d "app/src/main/assets" ]; then
+    AAPT2_LINK_CMD="$AAPT2_LINK_CMD -A app/src/main/assets"
+fi
 if [ -n "$EXTRA_PKGS" ]; then
     AAPT2_LINK_CMD="$AAPT2_LINK_CMD --extra-packages $EXTRA_PKGS"
 fi
@@ -113,6 +116,15 @@ done
 d8 --min-api 24 --lib libs/android.jar --output bin/ bin/app_classes.jar $DEX_LIBS
 
 echo "=== Adding classes.dex to APK ==="
+# Add native libraries (e.g. libtermux.so) into lib/ in the APK
+if [ -d "app/src/main/jniLibs" ]; then
+    echo "=== Adding native libraries to APK ==="
+    mkdir -p lib
+    cp -r app/src/main/jniLibs/* lib/
+    zip -r -0 bin/app.unsigned.apk lib/
+    rm -rf lib
+fi
+
 cd bin && aapt add app.unsigned.apk classes.dex > /dev/null && cd ..
 
 echo "=== Signing & Aligning APK ==="

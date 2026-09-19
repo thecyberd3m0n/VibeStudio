@@ -15,3 +15,4 @@ build_termux.sh
 gen_r/
 compiled_res/
 build/extracted_aars/
+local.properties
