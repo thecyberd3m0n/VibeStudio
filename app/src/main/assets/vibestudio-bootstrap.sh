@@ -18,7 +18,7 @@ echo "[vibestudio-bootstrap] DPKG_ADMINDIR=$DPKG_ADMINDIR"
 
 chmod -R 755 "$PREFIX/bin" "$PREFIX/libexec" "$PREFIX/lib/apt/methods" 2>/dev/null || true
 
-mkdir -p "$PREFIX/etc/dpkg/dpkg.cfg.d" "$PREFIX/var/lib/dpkg/updates" "$PREFIX/var/lib/dpkg/info" "$PREFIX/var/lib/dpkg/triggers" "$PREFIX/var/lib/dpkg/alternatives"
+mkdir -p "$PREFIX/etc/dpkg/dpkg.cfg.d" "$PREFIX/var/lib/dpkg/updates" "$PREFIX/var/lib/dpkg/info" "$PREFIX/var/lib/dpkg/triggers" "$PREFIX/var/lib/dpkg/alternatives" "$PREFIX/tmp"
 touch "$PREFIX/var/lib/dpkg/status" "$PREFIX/var/lib/dpkg/available"
 
 # Patch pkg script if it contains hardcoded /data/data/com.termux/files/usr
@@ -29,24 +29,25 @@ fi
 echo "[vibestudio-bootstrap] Checking available package managers..."
 # Link default mirror to chosen_mirrors
 if [ -f "$PREFIX/etc/termux/mirrors/default" ]; then
+    mkdir -p "$PREFIX/etc/termux"
     rm -f "$PREFIX/etc/termux/chosen_mirrors"
     ln -sf "$PREFIX/etc/termux/mirrors/default" "$PREFIX/etc/termux/chosen_mirrors"
 fi
 
-if [ -x "$PREFIX/bin/pkg" ]; then
-    echo "[vibestudio-bootstrap] Found pkg at $PREFIX/bin/pkg"
-    echo "[vibestudio-bootstrap] Running pkg update..."
-    "$PREFIX/bin/pkg" update -y
-    echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
-    "$PREFIX/bin/pkg" install -y ca-certificates termux-keyring
-elif [ -x "$PREFIX/bin/apt-get" ]; then
+if [ -x "$PREFIX/bin/apt-get" ]; then
     echo "[vibestudio-bootstrap] Found apt-get at $PREFIX/bin/apt-get"
     echo "[vibestudio-bootstrap] Running apt-get update..."
-    "$PREFIX/bin/apt-get" update -y
+    "$PREFIX/bin/apt-get" update -y || true
     echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
-    "$PREFIX/bin/apt-get" install -y ca-certificates termux-keyring
+    "$PREFIX/bin/apt-get" install -y ca-certificates termux-keyring || true
+elif [ -x "$PREFIX/bin/pkg" ] && [ -x "$PREFIX/bin/bash" ]; then
+    echo "[vibestudio-bootstrap] Found pkg at $PREFIX/bin/pkg"
+    echo "[vibestudio-bootstrap] Running pkg update..."
+    "$PREFIX/bin/bash" "$PREFIX/bin/pkg" update -y || true
+    echo "[vibestudio-bootstrap] Installing ca-certificates termux-keyring..."
+    "$PREFIX/bin/bash" "$PREFIX/bin/pkg" install -y ca-certificates termux-keyring || true
 else
-    echo "[vibestudio-bootstrap] Warning: Neither pkg nor apt-get found at $PREFIX/bin"
+    echo "[vibestudio-bootstrap] Warning: Neither apt-get nor pkg found at $PREFIX/bin"
     exit 1
 fi
 

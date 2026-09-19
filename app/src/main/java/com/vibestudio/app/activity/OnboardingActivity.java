@@ -314,28 +314,36 @@ public class OnboardingActivity extends Activity {
         }).start();
     }
 
-            private void overrideSTermuxPaths(File usrDir, File homeDir) {
+                private void overrideSTermuxPaths(File usrDir, File homeDir) {
         if (usrDir == null || !usrDir.exists() || !usrDir.isDirectory()) return;
 
-        // 1. Create symlinks /data/data/com.vibestudio.app/u -> usrDir and /h -> homeDir in app data dir
-        try {
-            File appDataDir = getDataDir();
-            if (appDataDir != null) {
-                File uLink = new File(appDataDir, "u");
-                File hLink = new File(appDataDir, "h");
-                try { android.system.Os.remove(uLink.getAbsolutePath()); } catch (Throwable ignored) {}
-                try { android.system.Os.remove(hLink.getAbsolutePath()); } catch (Throwable ignored) {}
-                try { android.system.Os.symlink(usrDir.getAbsolutePath(), uLink.getAbsolutePath()); } catch (Throwable ignored) {}
-                try {
-                    if (homeDir != null) {
-                        android.system.Os.symlink(homeDir.getAbsolutePath(), hLink.getAbsolutePath());
-                    }
-                } catch (Throwable ignored) {}
-                appendLog("[libtermux] Created symlink " + uLink.getAbsolutePath() + " -> " + usrDir.getAbsolutePath());
+        // 1. Create symlinks /u -> usrDir and /h -> homeDir across all candidate app directories
+        java.util.List<File> targetDirs = new java.util.ArrayList<>();
+        try { targetDirs.add(getDataDir()); } catch (Throwable ignored) {}
+        targetDirs.add(new File("/data/data/com.vibestudio.app"));
+        targetDirs.add(new File("/data/user/0/com.vibestudio.app"));
+        if (usrDir.getParentFile() != null) {
+            targetDirs.add(usrDir.getParentFile());
+            if (usrDir.getParentFile().getParentFile() != null) {
+                targetDirs.add(usrDir.getParentFile().getParentFile());
             }
-        } catch (Throwable t) {
-            LogViewerService.getInstance().w(TAG, "Failed creating u/h symlinks: " + t.getMessage());
         }
+
+        for (File dir : targetDirs) {
+            if (dir == null) continue;
+            if (!dir.exists()) { try { dir.mkdirs(); } catch (Throwable ignored) {} }
+            File uLink = new File(dir, "u");
+            File hLink = new File(dir, "h");
+            try { android.system.Os.remove(uLink.getAbsolutePath()); } catch (Throwable ignored) {}
+            try { android.system.Os.remove(hLink.getAbsolutePath()); } catch (Throwable ignored) {}
+            try { android.system.Os.symlink(usrDir.getAbsolutePath(), uLink.getAbsolutePath()); } catch (Throwable ignored) {}
+            try {
+                if (homeDir != null) {
+                    android.system.Os.symlink(homeDir.getAbsolutePath(), hLink.getAbsolutePath());
+                }
+            } catch (Throwable ignored) {}
+        }
+        appendLog("[libtermux] Created symlinks pointing to " + usrDir.getAbsolutePath());
 
         byte[] defaultUsrBytes = "/data/data/com.termux/files/usr".getBytes(java.nio.charset.StandardCharsets.UTF_8); // 31 bytes
         byte[] targetUsrBytes  = "/data/data/com.vibestudio.app/u".getBytes(java.nio.charset.StandardCharsets.UTF_8);   // 31 bytes
