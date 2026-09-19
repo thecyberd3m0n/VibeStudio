@@ -49,31 +49,6 @@ if [ -f "$PREFIX/etc/bash.bashrc" ]; then
 fi
 
 
-# Setup clean MOTD message
-mkdir -p "$PREFIX/etc"
-cat << 'EOF' > "$PREFIX/etc/motd"
-Welcome to Termux!
-
-Docs:       https://termux.dev/docs
-Donate:     https://termux.dev/donate
-Community:  https://termux.dev/community
-Issues:     https://termux.dev/issues
-
-Working with packages:
-
- - Search:  pkg search <query>
- - Install: pkg install <package>
- - Upgrade: pkg upgrade
-
-Subscribing to additional repositories:
-
- - Root:    pkg install root-repo
- - X11:     pkg install x11-repo
-
-For fixing any repository issues,
-try 'termux-change-repo' command.
-EOF
-
 echo "[vibestudio-bootstrap] Checking available package managers..."
 # Link default mirror to chosen_mirrors
 if [ -f "$PREFIX/etc/termux/mirrors/default" ]; then

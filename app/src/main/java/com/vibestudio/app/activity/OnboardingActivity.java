@@ -32,6 +32,31 @@ import kotlinx.coroutines.flow.FlowCollector;
 
 public class OnboardingActivity extends Activity {
     
+    
+    private void deployAssetDirectory(String assetSubDir, File targetDir) {
+        if (!targetDir.exists()) {
+            targetDir.mkdirs();
+        }
+        try {
+            String[] list = getAssets().list(assetSubDir);
+            if (list != null) {
+                for (String fileName : list) {
+                    File outFile = new File(targetDir, fileName);
+                    try (java.io.InputStream in = getAssets().open(assetSubDir + "/" + fileName);
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(outFile)) {
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            appendLog("[warning] Failed to deploy asset directory " + assetSubDir + ": " + t.getMessage());
+        }
+    }
+
     private static void cleanProfileFile(File file) {
         if (file != null && file.exists()) {
             try {
@@ -323,15 +348,9 @@ public class OnboardingActivity extends Activity {
                         profileDBootstrap.delete();
                     }
 
-                    // Clean profile files to strip fallback run messages
-                    cleanProfileFile(new File(usrDir, "etc/profile"));
-                    cleanProfileFile(new File(usrDir, "etc/bash.bashrc"));
-
-                    // Setup clean MOTD message
-                    File motdFile = new File(usrDir, "etc/motd");
-                    try (java.io.FileWriter writer = new java.io.FileWriter(motdFile)) {
-                        writer.write("Welcome to Termux!\n\nDocs:       https://termux.dev/docs\nDonate:     https://termux.dev/donate\nCommunity:  https://termux.dev/community\nIssues:     https://termux.dev/issues\n\nWorking with packages:\n\n - Search:  pkg search <query>\n - Install: pkg install <package>\n - Upgrade: pkg upgrade\n\nSubscribing to additional repositories:\n\n - Root:    pkg install root-repo\n - X11:     pkg install x11-repo\n\nFor fixing any repository issues,\ntry 'termux-change-repo' command.\n");
-                    } catch (Throwable ignored) {}
+                    // Deploy environment configuration files from app assets
+                    appendLog("[libtermux] Deploying termux-etc configuration files from assets...");
+                    deployAssetDirectory("termux-etc", new File(usrDir, "etc"));
 
                     appendLog("[libtermux] Storing LibTermux settings in database...");
                     mDbHelper.setSetting("env_prefix", usrDir.getAbsolutePath());
