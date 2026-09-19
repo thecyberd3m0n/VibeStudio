@@ -454,7 +454,7 @@ public class OnboardingActivity extends Activity {
         }
     }
 
-    private int processDirectoryForTermuxPaths(File dir, String targetUsr, String defaultUsr, String targetHome, String defaultHome, int depth) {
+        private int processDirectoryForTermuxPaths(File dir, String targetUsr, String defaultUsr, String targetHome, String defaultHome, int depth) {
         if (depth > 6) return 0;
         File[] files = dir.listFiles();
         if (files == null) return 0;
@@ -527,12 +527,6 @@ public class OnboardingActivity extends Activity {
                             }
                             count++;
                         }
-                    } else {
-                        byte[] pattern = "/data/data/com.termux".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                        byte[] replacement = "/data/data/com.absent".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                        if (replaceBytesInFile(file, pattern, replacement)) {
-                            count++;
-                        }
                     }
                 } catch (Exception e) {
                     LogViewerService.getInstance().w(TAG, "Failed to process path for " + file.getName(), e);
@@ -585,10 +579,19 @@ public class OnboardingActivity extends Activity {
         if (exitCode != 0) { throw new RuntimeException("vibestudio-bootstrap.sh failed with exit code " + exitCode); }
     }
 
-    private void setupSymlinksAndPermissions(File usrDir) {
+        private void setupSymlinksAndPermissions(File usrDir) {
         if (usrDir == null || !usrDir.exists()) return;
+        File binDir = new File(usrDir, "bin");
+        if (!binDir.exists()) binDir.mkdirs();
 
-        // 1. Process SYMLINKS.txt if present
+        // 1. Force executable permissions on binary directories FIRST
+        makeDirectoryExecutable(new File(usrDir, "bin"));
+        makeDirectoryExecutable(new File(usrDir, "libexec"));
+        makeDirectoryExecutable(new File(usrDir, "lib/apt/methods"));
+        makeDirectoryExecutable(new File(usrDir, "lib/apt/solvers"));
+        makeDirectoryExecutable(new File(usrDir, "lib/apt/planners"));
+
+        // 2. Process SYMLINKS.txt if present
         File symlinksFile = new File(usrDir, "SYMLINKS.txt");
         if (symlinksFile.exists()) {
             appendLog("[libtermux] Processing SYMLINKS.txt with POSIX symlink...");
@@ -602,16 +605,23 @@ public class OnboardingActivity extends Activity {
                         String target = parts[0].trim();
                         String relPath = parts[1].trim();
                         if (relPath.startsWith("./")) relPath = relPath.substring(2);
+
                         if (target.startsWith("/data/data/com.termux/files/usr/")) {
+                            target = usrDir.getAbsolutePath() + "/" + target.substring("/data/data/com.termux/files/usr/".length());
+                        } else if (target.startsWith("/data/data/com.termux/files/usr")) {
                             target = usrDir.getAbsolutePath() + target.substring("/data/data/com.termux/files/usr".length());
                         }
+
                         File linkFile = new File(usrDir, relPath);
                         File parent = linkFile.getParentFile();
                         if (parent != null && !parent.exists()) parent.mkdirs();
+
                         try { android.system.Os.remove(linkFile.getAbsolutePath()); } catch (Throwable ignored) {}
                         linkFile.delete();
+
                         try {
                             android.system.Os.symlink(target, linkFile.getAbsolutePath());
+                            try { android.system.Os.chmod(linkFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
                             count++;
                         } catch (Throwable t) {
                             android.util.Log.w("OnboardingActivity", "Failed symlink: " + linkFile + " -> " + target + ": " + t.getMessage());
@@ -623,74 +633,68 @@ public class OnboardingActivity extends Activity {
                 appendLog("[warning] Error reading SYMLINKS.txt: " + t.getMessage());
             }
         }
-        File binDir = new File(usrDir, "bin");
-        if (!binDir.exists()) binDir.mkdirs();
 
-        File coreutils = new File(binDir, "coreutils");
-        File busybox = new File(binDir, "busybox");
-        File dpkg = new File(binDir, "dpkg");
-        File dash = new File(binDir, "dash");
-        File bash = new File(binDir, "bash");
+        // 3. Guarantee all 6 required dpkg binaries are executable
+        ensureExecutableTool(binDir, "sh", "dash", "bash");
+        ensureExecutableTool(binDir, "rm", "coreutils", "busybox");
+        ensureExecutableTool(binDir, "tar", "busybox", "coreutils");
+        ensureExecutableTool(binDir, "diff", "busybox", "coreutils");
+        ensureExecutableTool(binDir, "dpkg-deb", "dpkg", "busybox");
+        ensureExecutableTool(binDir, "start-stop-daemon", "dpkg", "busybox");
 
-        // 1. Ensure shell symlink
-        File sh = new File(binDir, "sh");
-        if (!sh.exists()) {
-            if (dash.exists()) {
-                createSymlink(binDir, "sh", "dash");
-            } else if (bash.exists()) {
-                createSymlink(binDir, "sh", "bash");
-            }
+        // 4. Ensure other common utility tools
+        String[] commonTools = new String[]{
+            "cat", "ls", "cp", "mv", "ln", "chmod", "mkdir", "echo", "touch", "chown", "shred"
+        };
+        for (String tool : commonTools) {
+            ensureExecutableTool(binDir, tool, "coreutils", "busybox");
         }
 
-        // 2. Ensure coreutils / rm symlinks
-        String targetTool = coreutils.exists() ? "coreutils" : (busybox.exists() ? "busybox" : null);
-        if (targetTool != null) {
-            String[] commonTools = new String[]{
-                "rm", "cat", "ls", "cp", "mv", "ln", "chmod", "mkdir", "echo", "touch", "chown", "shred"
-            };
-            for (String tool : commonTools) {
-                File toolFile = new File(binDir, tool);
-                if (!toolFile.exists()) {
-                    createSymlink(binDir, tool, targetTool);
-                }
-            }
-        }
-
-        // 3. Ensure dpkg tools
-        if (dpkg.exists()) {
-            File dpkgDeb = new File(binDir, "dpkg-deb");
-            if (!dpkgDeb.exists()) {
-                createSymlink(binDir, "dpkg-deb", "dpkg");
-            }
-            File startStopDaemon = new File(binDir, "start-stop-daemon");
-            if (!startStopDaemon.exists()) {
-                createSymlink(binDir, "start-stop-daemon", "dpkg");
-            }
-        }
-
-        // 4. Force 0755 permissions on all files in executable directories
+        // 5. Re-run permission check on executable directories
         makeDirectoryExecutable(new File(usrDir, "bin"));
         makeDirectoryExecutable(new File(usrDir, "libexec"));
         makeDirectoryExecutable(new File(usrDir, "lib/apt/methods"));
-        makeDirectoryExecutable(new File(usrDir, "lib/apt/solvers"));
-        makeDirectoryExecutable(new File(usrDir, "lib/apt/planners"));
 
-        // 5. Verify and log status of all 6 expected dpkg binaries
+        // 6. Verify and log status of all 6 expected dpkg binaries
         String[] required = new String[]{"sh", "rm", "tar", "diff", "dpkg-deb", "start-stop-daemon"};
         for (String req : required) {
             File reqFile = new File(binDir, req);
             boolean exists = reqFile.exists();
             boolean canExec = reqFile.canExecute();
             appendLog("[libtermux] Binary check: bin/" + req + " (exists=" + exists + ", canExecute=" + canExec + ")");
-            if (!canExec && exists) {
-                try {
-                    android.system.Os.chmod(reqFile.getAbsolutePath(), 0755);
-                    appendLog("[libtermux] Fixed permissions for bin/" + req + " -> 0755 (canExecute=" + reqFile.canExecute() + ")");
-                } catch (Throwable t) {
-                    appendLog("[warning] Failed chmod on bin/" + req + ": " + t.getMessage());
+        }
+    }
+
+    private boolean ensureExecutableTool(File binDir, String toolName, String... fallbackTargets) {
+        File toolFile = new File(binDir, toolName);
+        if (toolFile.exists()) {
+            try { android.system.Os.chmod(toolFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+        }
+        if (toolFile.exists() && toolFile.canExecute()) {
+            return true;
+        }
+
+        try { android.system.Os.remove(toolFile.getAbsolutePath()); } catch (Throwable ignored) {}
+        toolFile.delete();
+
+        for (String targetName : fallbackTargets) {
+            File targetFile = new File(binDir, targetName);
+            if (!targetFile.exists()) {
+                targetFile = new File(binDir.getParentFile(), targetName);
+            }
+            if (targetFile.exists()) {
+                try { android.system.Os.chmod(targetFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                if (targetFile.canExecute()) {
+                    createSymlink(binDir, toolName, targetName);
+                    try { android.system.Os.chmod(toolFile.getAbsolutePath(), 0755); } catch (Throwable ignored) {}
+                    if (toolFile.exists() && toolFile.canExecute()) {
+                        appendLog("[libtermux] Fixed tool " + toolName + " -> " + targetName);
+                        return true;
+                    }
                 }
             }
         }
+        return false;
     }
 
     private void makeDirectoryExecutable(File dir) {
